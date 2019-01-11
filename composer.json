@@ -1,0 +1,41 @@
+{
+  "name": "protophp/socket",
+  "description": "A TCP and UNIX socket for Inter-Server communication with delivery and reply features in the application layer in PHP.",
+  "keywords": [
+    "socket",
+    "tcp",
+    "unix-socket",
+    "delivery",
+    "reply",
+    "php",
+    "inter-service-communication",
+    "s2s"
+  ],
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Arash Ghamkhari",
+      "email": "dev@ghamkhari.com"
+    }
+  ],
+  "require": {
+    "protophp/pack": "^0.1",
+    "react/socket": "^1.0",
+    "monolog/monolog": "^1.0",
+    "evenement/evenement": "^3.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^7.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Proto\\Socket\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Proto\\Socket\\": "tests"
+    }
+  }
+}
