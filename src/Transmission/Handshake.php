@@ -95,21 +95,13 @@ class Handshake extends EventEmitter implements HandshakeInterface
                     return;
                 }
 
-                $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED]));
+                $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED, $session->getKey()]));
                 $this->emit('established', [$session]);
                 return;
 
             // Client side
             case self::ACTION_ESTABLISHED:
-                try {
-                    $session = isset($this->key) ? $this->sessionManager->start($this->key) : $this->sessionManager->start();
-                } catch (SessionException $e) {
-                    isset($this->logger) && $this->logger->critical("[Handshake]: Unable to recover session in client side!");
-                    $this->emit('error');
-                    return;
-                }
-
-                $this->emit('established', [$session]);
+                $this->emit('established', [isset($this->key) ? $this->key : $pack->getHeaderByKey(1)]);
                 return;
 
             case self::ACTION_ERROR:
