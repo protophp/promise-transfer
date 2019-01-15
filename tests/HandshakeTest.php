@@ -24,6 +24,7 @@ class HandshakeTest extends TestCase
     {
         $this->testNoneKey();
         $this->testWithKey();
+        $this->testInvalidKey();
     }
 
     private function testNoneKey()
@@ -109,6 +110,50 @@ class HandshakeTest extends TestCase
                 $this->assertSame($this->key, $key);
                 unlink($unix);
                 $loop->stop();
+            });
+
+        })->otherwise(function (\Exception $e) {
+            die($e->getTraceAsString());
+        });
+
+        $loop->run();
+    }
+
+    private function testInvalidKey()
+    {
+        $unix = __DIR__ . '/handshake-unix.socks';
+        if (file_exists($unix))
+            unlink($unix);
+
+        $loop = Factory::create();
+
+        $server = new Server("unix://$unix", $loop);
+        $client = new Connector($loop);
+
+        $server->on('connection', function (ConnectionInterface $conn) {
+            $handshake = new Handshake($conn, $this->sessionManager);
+
+            $handshake->on('error', function () {
+
+            });
+
+            $handshake->on('established', function () {
+                die('Session established!');
+            });
+        });
+
+        $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
+
+            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake->handshake('INVALID KEY');
+
+            $handshake->on('error', function () use ($unix, $loop){
+                unlink($unix);
+                $loop->stop();
+            });
+
+            $handshake->on('established', function () {
+                die('Session established!');
             });
 
         })->otherwise(function (\Exception $e) {
