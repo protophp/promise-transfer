@@ -47,9 +47,9 @@ class Handshake extends EventEmitter implements HandshakeInterface
         $this->key = $key;
 
         if ($this->key === null)
-            $this->conn->write((new Pack())->setHeader([self::ACTION_REQUEST]));
+            $this->conn->write((new Pack())->setHeader([self::ACTION_REQUEST])->toString());
         else
-            $this->conn->write((new Pack())->setHeader([self::ACTION_REQUEST, $this->key]));
+            $this->conn->write((new Pack())->setHeader([self::ACTION_REQUEST, $this->key])->toString());
     }
 
     public function unpack(PackInterface $pack)
@@ -69,18 +69,18 @@ class Handshake extends EventEmitter implements HandshakeInterface
                         switch ($e->getCode()) {
                             case SessionException::ERR_INVALID_SESSION_KEY:
                                 isset($this->logger) && $this->logger->critical("[Handshake]: Invalid session's key! key: '$key'");
-                                $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR]));
+                                $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR])->toString());
                                 break;
 
                             default:
                                 isset($this->logger) && $this->logger->critical("[Handshake]: Something wrong in recover session! key: '$key'");
-                                $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR]));
+                                $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR])->toString());
                         }
                         $this->emit('error');
                         return;
                     }
 
-                    $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED]));
+                    $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED])->toString());
                     $this->emit('established', [$session]);
                     return;
                 }
@@ -90,12 +90,12 @@ class Handshake extends EventEmitter implements HandshakeInterface
                     $session = $this->sessionManager->start();
                 } catch (SessionException $e) {
                     isset($this->logger) && $this->logger->critical("[Handshake]: Something wrong in generate new session!");
-                    $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR]));
+                    $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR])->toString());
                     $this->emit('error');
                     return;
                 }
 
-                $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED, $session->getKey()]));
+                $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED, $session->getKey()])->toString());
                 $this->emit('established', [$session]);
                 return;
 
