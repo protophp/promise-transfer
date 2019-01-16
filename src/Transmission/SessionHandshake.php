@@ -11,7 +11,7 @@ use Proto\Session\SessionManagerInterface;
 use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
 
-class Handshake extends EventEmitter implements HandshakeInterface
+class SessionHandshake extends EventEmitter implements SessionHandshakeInterface
 {
     use LoggerAwareTrait;
 

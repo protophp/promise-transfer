@@ -6,13 +6,13 @@ use PHPUnit\Framework\TestCase;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManager;
 use Proto\Session\SessionManagerInterface;
-use Proto\Socket\Transmission\Handshake;
+use Proto\Socket\Transmission\SessionHandshake;
 use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
 use React\Socket\Connector;
 use React\Socket\Server;
 
-class HandshakeTest extends TestCase
+class SessionHandshakeTest extends TestCase
 {
     /**
      * @var SessionManagerInterface
@@ -22,12 +22,12 @@ class HandshakeTest extends TestCase
 
     public function test()
     {
-        $this->testNoneKey();
-        $this->testWithKey();
-        $this->testInvalidKey();
+        $this->noneKey();
+        $this->withKey();
+        $this->invalidKey();
     }
 
-    private function testNoneKey()
+    private function noneKey()
     {
         $this->sessionManager = new SessionManager();
 
@@ -41,7 +41,7 @@ class HandshakeTest extends TestCase
         $client = new Connector($loop);
 
         $server->on('connection', function (ConnectionInterface $conn) {
-            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake = new SessionHandshake($conn, $this->sessionManager);
 
             $handshake->on('error', function () {
                 die('Server Handshake Error!');
@@ -54,7 +54,7 @@ class HandshakeTest extends TestCase
 
         $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
 
-            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake = new SessionHandshake($conn, $this->sessionManager);
             $handshake->handshake();
 
             $handshake->on('error', function () {
@@ -74,7 +74,7 @@ class HandshakeTest extends TestCase
         $loop->run();
     }
 
-    private function testWithKey()
+    private function withKey()
     {
         $unix = __DIR__ . '/handshake-unix.socks';
         if (file_exists($unix))
@@ -86,7 +86,7 @@ class HandshakeTest extends TestCase
         $client = new Connector($loop);
 
         $server->on('connection', function (ConnectionInterface $conn) {
-            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake = new SessionHandshake($conn, $this->sessionManager);
 
             $handshake->on('error', function () {
                 die('Server Handshake Error!');
@@ -99,7 +99,7 @@ class HandshakeTest extends TestCase
 
         $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
 
-            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake = new SessionHandshake($conn, $this->sessionManager);
             $handshake->handshake($this->key);
 
             $handshake->on('error', function () {
@@ -119,7 +119,7 @@ class HandshakeTest extends TestCase
         $loop->run();
     }
 
-    private function testInvalidKey()
+    private function invalidKey()
     {
         $unix = __DIR__ . '/handshake-unix.socks';
         if (file_exists($unix))
@@ -131,7 +131,7 @@ class HandshakeTest extends TestCase
         $client = new Connector($loop);
 
         $server->on('connection', function (ConnectionInterface $conn) {
-            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake = new SessionHandshake($conn, $this->sessionManager);
 
             $handshake->on('error', function () {
 
@@ -144,7 +144,7 @@ class HandshakeTest extends TestCase
 
         $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
 
-            $handshake = new Handshake($conn, $this->sessionManager);
+            $handshake = new SessionHandshake($conn, $this->sessionManager);
             $handshake->handshake('INVALID KEY');
 
             $handshake->on('error', function () use ($unix, $loop){

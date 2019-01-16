@@ -7,7 +7,7 @@ use Proto\Session\SessionManagerInterface;
 use Psr\Log\LoggerAwareInterface;
 use React\Socket\ConnectionInterface;
 
-interface HandshakeInterface extends EventEmitterInterface, LoggerAwareInterface
+interface SessionHandshakeInterface extends EventEmitterInterface, LoggerAwareInterface
 {
     const ACTION_REQUEST = 0;
     const ACTION_ESTABLISHED = 1;
