@@ -7,6 +7,7 @@ use Proto\Session\SessionInterface;
 use Proto\Session\SessionManager;
 use Proto\Session\SessionManagerInterface;
 use Proto\Socket\Transmission\SessionHandshake;
+use Proto\Socket\Transmission\SessionHandshakeInterface;
 use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
 use React\Socket\Connector;
@@ -18,148 +19,148 @@ class SessionHandshakeTest extends TestCase
      * @var SessionManagerInterface
      */
     private $sessionManager;
-    private $key = null;
 
-    public function test()
-    {
-        $this->noneKey();
-        $this->withKey();
-        $this->invalidKey();
-    }
+    /**
+     * @var SessionInterface
+     */
+    private $serverSession;
 
-    private function noneKey()
+    /**
+     * @var SessionInterface
+     */
+    private $clientSession;
+
+    /**
+     * @var \React\EventLoop\LoopInterface
+     */
+    private $loop;
+
+    /**
+     * @var SessionHandshakeInterface
+     */
+    private $serverHandshake;
+
+    /**
+     * @var SessionHandshakeInterface
+     */
+    private $clientHandshake;
+
+    /**
+     * SessionHandshakeTest constructor.
+     * @param string|null $name
+     * @param array $data
+     * @param string $dataName
+     * @throws \Proto\Session\Exception\SessionException
+     */
+    public function __construct(string $name = null, array $data = [], string $dataName = '')
     {
+        parent::__construct($name, $data, $dataName);
+
         $this->sessionManager = new SessionManager();
-
-        $unix = __DIR__ . '/handshake-unix.socks';
-        if (file_exists($unix))
-            unlink($unix);
-
-        $loop = Factory::create();
-
-        $server = new Server("unix://$unix", $loop);
-        $client = new Connector($loop);
-
-        $server->on('connection', function (ConnectionInterface $conn) {
-            $handshake = new SessionHandshake($conn, $this->sessionManager);
-
-            $handshake->on('error', function () {
-                die('Server Handshake Error!');
-            });
-
-            $handshake->on('established', function (SessionInterface $session) {
-                $this->key = $session->getKey();
-            });
-        });
-
-        $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
-
-            $handshake = new SessionHandshake($conn, $this->sessionManager);
-            $handshake->handshake();
-
-            $handshake->on('error', function () {
-                die('Client Handshake Error!');
-            });
-
-            $handshake->on('established', function (string $key) use ($loop, $unix) {
-                $this->assertSame($this->key, $key);
-                unlink($unix);
-                $loop->stop();
-            });
-
-        })->otherwise(function (\Exception $e) {
-            die($e->getTraceAsString());
-        });
-
-        $loop->run();
+        $this->clientSession = $this->sessionManager->start();
+        $this->loop = Factory::create();
     }
 
-    private function withKey()
+    public function testNoneKey()
     {
-        $unix = __DIR__ . '/handshake-unix.socks';
-        if (file_exists($unix))
-            unlink($unix);
-
-        $loop = Factory::create();
-
-        $server = new Server("unix://$unix", $loop);
-        $client = new Connector($loop);
-
-        $server->on('connection', function (ConnectionInterface $conn) {
-            $handshake = new SessionHandshake($conn, $this->sessionManager);
-
-            $handshake->on('error', function () {
-                die('Server Handshake Error!');
-            });
-
-            $handshake->on('established', function (SessionInterface $session) {
-                $this->assertSame($this->key, $session->getKey());
-            });
-        });
-
-        $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
-
-            $handshake = new SessionHandshake($conn, $this->sessionManager);
-            $handshake->handshake($this->key);
-
-            $handshake->on('error', function () {
-                die('Client Handshake Error!');
-            });
-
-            $handshake->on('established', function (string $key) use ($loop, $unix) {
-                $this->assertSame($this->key, $key);
-                unlink($unix);
-                $loop->stop();
-            });
-
-        })->otherwise(function (\Exception $e) {
-            die($e->getTraceAsString());
-        });
-
-        $loop->run();
+        $this->prepare(
+            function () {
+                $this->serverHandshake->on('established', function (SessionInterface $serverSession, $lastAck, $lastMerging) {
+                    $this->serverSession = $serverSession;
+                    $this->assertNull($lastAck);
+                    $this->assertNull($lastMerging);
+                });
+            },
+            function () {
+                $this->clientHandshake->handshake($this->clientSession);
+                $this->clientHandshake->on('established', function (SessionInterface $clientSession, $lastAck, $lastMerging) {
+                    $this->assertSame($this->clientSession, $clientSession);
+                    $this->assertSame($this->clientSession->get('SERVER-SESSION-KEY'), $this->serverSession->getKey());
+                    $this->assertNull($lastAck);
+                    $this->assertNull($lastMerging);
+                    $this->loop->stop();
+                });
+            }
+        );
+        $this->loop->run();
     }
 
-    private function invalidKey()
+    public function testWithKey()
     {
-        $unix = __DIR__ . '/handshake-unix.socks';
-        if (file_exists($unix))
-            unlink($unix);
+        $this->testNoneKey();
 
-        $loop = Factory::create();
+        $this->prepare(
+            function () {
+                $this->serverHandshake->on('established', function (SessionInterface $serverSession, $lastAck, $lastMerging) {
 
-        $server = new Server("unix://$unix", $loop);
-        $client = new Connector($loop);
+                    // new server session and the old one is the same.
+                    $this->assertSame($this->serverSession, $serverSession);
 
-        $server->on('connection', function (ConnectionInterface $conn) {
-            $handshake = new SessionHandshake($conn, $this->sessionManager);
+                    $this->assertNull($lastAck);
+                    $this->assertNull($lastMerging);
+                });
+            },
+            function () {
+                $this->clientHandshake->handshake($this->clientSession);
+                $this->clientHandshake->on('established', function (SessionInterface $clientSession, $lastAck, $lastMerging) {
+                    $this->assertSame($this->clientSession, $clientSession);
+                    $this->assertSame($this->clientSession->get('SERVER-SESSION-KEY'), $this->serverSession->getKey());
+                    $this->assertNull($lastAck);
+                    $this->assertNull($lastMerging);
+                    $this->loop->stop();
+                });
+            }
+        );
+        $this->loop->run();
+    }
 
-            $handshake->on('error', function () {
+    public function testInvalidKey()
+    {
+        $this->testNoneKey();
 
-            });
+        // Change key
+        $this->clientSession->set('SERVER-SESSION-KEY', 'Key-is-changed!');
 
-            $handshake->on('established', function () {
-                die('Session established!');
-            });
+        $SHE = false;   // Server Handshake Error
+        $this->prepare(
+            function () use (&$SHE) {
+                $this->serverHandshake->on('error', function () use (&$SHE) {
+                    $SHE = true;
+                });
+            },
+            function () use (&$SHE) {
+                $this->clientHandshake->handshake($this->clientSession);
+                $this->clientHandshake->on('error', function () use (&$SHE) {
+                    $this->assertTrue($SHE);
+                    $this->loop->stop();
+                });
+            }
+        );
+        $this->loop->run();
+    }
+
+    private function prepare(callable $onServer, callable $onClient)
+    {
+        // Find an unused unprivileged TCP port
+        $port = (int)shell_exec('netstat -atn | awk \' /tcp/ {printf("%s\n",substr($4,index($4,":")+1,length($4) )) }\' | sed -e "s/://g" | sort -rnu | awk \'{array [$1] = $1} END {i=32768; again=1; while (again == 1) {if (array[i] == i) {i=i+1} else {print i; again=0}}}\'');
+
+        // Server setup
+        $server = new Server("tcp://127.0.0.1:$port", $this->loop);
+        $server->on('connection', function (ConnectionInterface $conn) use ($onServer) {
+            $this->serverHandshake = new SessionHandshake($conn, $this->sessionManager);
+            call_user_func($onServer, $conn);
         });
-
-        $client->connect("unix://$unix")->then(function (ConnectionInterface $conn) use ($loop, $unix) {
-
-            $handshake = new SessionHandshake($conn, $this->sessionManager);
-            $handshake->handshake('INVALID KEY');
-
-            $handshake->on('error', function () use ($unix, $loop){
-                unlink($unix);
-                $loop->stop();
-            });
-
-            $handshake->on('established', function () {
-                die('Session established!');
-            });
-
-        })->otherwise(function (\Exception $e) {
+        $server->on('error', function (\Exception $e) {
             die($e->getTraceAsString());
         });
 
-        $loop->run();
+        // Client setup
+        $client = new Connector($this->loop);
+        $client->connect("tcp://127.0.0.1:$port")->then(function (ConnectionInterface $conn) use ($onClient) {
+            $this->clientHandshake = new SessionHandshake($conn, $this->sessionManager);
+            call_user_func($onClient, $conn);
+        })->otherwise(function (\Exception $e) {
+            die($e->getTraceAsString());
+        });
     }
 }

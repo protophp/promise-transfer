@@ -7,6 +7,7 @@ use Proto\Pack\Pack;
 use Proto\Pack\PackInterface;
 use Proto\Pack\Unpack;
 use Proto\Session\Exception\SessionException;
+use Proto\Session\SessionInterface;
 use Proto\Session\SessionManagerInterface;
 use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
@@ -30,7 +31,10 @@ class SessionHandshake extends EventEmitter implements SessionHandshakeInterface
      */
     private $sessionManager;
 
-    private $key;
+    /**
+     * @var SessionInterface
+     */
+    private $clientSession;
 
     public function __construct(ConnectionInterface $conn, SessionManagerInterface $sessionManager)
     {
@@ -42,46 +46,69 @@ class SessionHandshake extends EventEmitter implements SessionHandshakeInterface
         $this->unpack->on('unpack', [$this, 'unpack']);
     }
 
-    public function handshake(string $key = null)
+    public function handshake(SessionInterface $clientSession)
     {
-        $this->key = $key;
+        $this->clientSession = $clientSession;
 
-        if ($this->key === null)
+        if (!$this->clientSession->is('SERVER-SESSION-KEY')) {
             $this->conn->write((new Pack())->setHeader([self::ACTION_REQUEST])->toString());
-        else
-            $this->conn->write((new Pack())->setHeader([self::ACTION_REQUEST, $this->key])->toString());
+            return;
+        }
+
+        $this->conn->write(
+            (new Pack())
+                ->setHeader([
+                    self::ACTION_REQUEST,
+                    $this->clientSession->get('SERVER-SESSION-KEY'),
+                    $this->clientSession->get('LAST-ACK'),
+                    $this->clientSession->get('LAST-MERGING')
+                ])
+                ->toString()
+        );
     }
 
     public function unpack(PackInterface $pack)
     {
         $action = $pack->getHeaderByKey(0);
+        $serverSessionKey = $pack->getHeaderByKey(1);
+        $lastAck = $pack->getHeaderByKey(2);
+        $lastMerging = $pack->getHeaderByKey(3);
         switch ($action) {
 
             // Server side
             case self::ACTION_REQUEST:
-                $key = $pack->getHeaderByKey(1);
 
                 // Recover Session
-                if (isset($key)) {
+                if (isset($serverSessionKey)) {
                     try {
-                        $session = $this->sessionManager->start($key);
+                        $session = $this->sessionManager->start($serverSessionKey);
                     } catch (SessionException $e) {
                         switch ($e->getCode()) {
                             case SessionException::ERR_INVALID_SESSION_KEY:
-                                isset($this->logger) && $this->logger->critical("[Handshake]: Invalid session's key! key: '$key'");
+                                isset($this->logger) && $this->logger->critical("[Handshake]: Invalid session's key! key: '$serverSessionKey'");
                                 $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR])->toString());
                                 break;
 
                             default:
-                                isset($this->logger) && $this->logger->critical("[Handshake]: Something wrong in recover session! key: '$key'");
+                                isset($this->logger) && $this->logger->critical("[Handshake]: Something wrong in recover session! key: '$serverSessionKey'");
                                 $this->conn->write((new Pack)->setHeader([self::ACTION_ERROR])->toString());
                         }
                         $this->emit('error');
                         return;
                     }
 
-                    $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED])->toString());
-                    $this->emit('established', [$session]);
+                    $this->conn->write(
+                        (new Pack)
+                            ->setHeader([
+                                self::ACTION_ESTABLISHED,
+                                null,
+                                $session->get('LAST-ACK'),
+                                $session->get('LAST-MERGING')
+                            ])
+                            ->toString());
+
+                    $this->conn->removeAllListeners('data');
+                    $this->emit('established', [$session, $lastAck, $lastMerging]);
                     return;
                 }
 
@@ -95,13 +122,28 @@ class SessionHandshake extends EventEmitter implements SessionHandshakeInterface
                     return;
                 }
 
-                $this->conn->write((new Pack)->setHeader([self::ACTION_ESTABLISHED, $session->getKey()])->toString());
-                $this->emit('established', [$session]);
+                $this->conn->write(
+                    (new Pack)
+                        ->setHeader([
+                            self::ACTION_ESTABLISHED,
+                            $session->getKey(),
+                            null,
+                            null
+                        ])
+                        ->toString());
+
+                $this->conn->removeAllListeners('data');
+                $this->emit('established', [$session, null, null]);
                 return;
 
             // Client side
             case self::ACTION_ESTABLISHED:
-                $this->emit('established', [isset($this->key) ? $this->key : $pack->getHeaderByKey(1)]);
+
+                if (!$this->clientSession->is('SERVER-SESSION-KEY'))
+                    $this->clientSession->set('SERVER-SESSION-KEY', $serverSessionKey);
+
+                $this->conn->removeAllListeners('data');
+                $this->emit('established', [$this->clientSession, $lastAck, $lastMerging]);
                 return;
 
             case self::ACTION_ERROR:
