@@ -6,14 +6,14 @@ use PHPUnit\Framework\TestCase;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManager;
 use Proto\Session\SessionManagerInterface;
-use Proto\Socket\Transmission\SessionHandshake;
-use Proto\Socket\Transmission\SessionHandshakeInterface;
+use Proto\Socket\Handshake\Handshake;
+use Proto\Socket\Handshake\HandshakeInterface;
 use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
 use React\Socket\Connector;
 use React\Socket\Server;
 
-class SessionHandshakeTest extends TestCase
+class HandshakeTest extends TestCase
 {
     /**
      * @var SessionManagerInterface
@@ -36,12 +36,12 @@ class SessionHandshakeTest extends TestCase
     private $loop;
 
     /**
-     * @var SessionHandshakeInterface
+     * @var HandshakeInterface
      */
     private $serverHandshake;
 
     /**
-     * @var SessionHandshakeInterface
+     * @var HandshakeInterface
      */
     private $clientHandshake;
 
@@ -147,7 +147,7 @@ class SessionHandshakeTest extends TestCase
         // Server setup
         $server = new Server("tcp://127.0.0.1:$port", $this->loop);
         $server->on('connection', function (ConnectionInterface $conn) use ($onServer) {
-            $this->serverHandshake = new SessionHandshake($conn, $this->sessionManager);
+            $this->serverHandshake = new Handshake($conn, $this->sessionManager);
             call_user_func($onServer, $conn);
         });
         $server->on('error', function (\Exception $e) {
@@ -157,7 +157,7 @@ class SessionHandshakeTest extends TestCase
         // Client setup
         $client = new Connector($this->loop);
         $client->connect("tcp://127.0.0.1:$port")->then(function (ConnectionInterface $conn) use ($onClient) {
-            $this->clientHandshake = new SessionHandshake($conn, $this->sessionManager);
+            $this->clientHandshake = new Handshake($conn, $this->sessionManager);
             call_user_func($onClient, $conn);
         })->otherwise(function (\Exception $e) {
             die($e->getTraceAsString());
