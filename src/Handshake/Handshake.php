@@ -97,7 +97,8 @@ class Handshake extends EventEmitter implements HandshakeInterface
             if (!$this->clientSession->is('SERVER-SESSION-KEY'))
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
-            $this->established($parser, $this->clientSession);
+            $this->conn->removeAllListeners('data');
+            $this->emit('established', [$this->clientSession, $parser->getLastAck(), $parser->getLastMerging()]);
         });
 
         // On Error
