@@ -7,9 +7,9 @@ use Proto\Pack\Pack;
 use Proto\Pack\PackInterface;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManager;
-use Proto\Socket\Transmission\SessionHandshake;
-use Proto\Socket\Transmission\Transfer;
-use Proto\Socket\Transmission\TransferInterface;
+use Proto\Socket\Handshake\Handshake;
+use Proto\Socket\Transfer\Transfer;
+use Proto\Socket\Transfer\TransferInterface;
 use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
 use React\Socket\Connector;
@@ -73,7 +73,7 @@ class TransferTest extends TestCase
         // Server setup
         $server = new Server("tcp://127.0.0.1:$port", $this->loop);
         $server->on('connection', function (ConnectionInterface $conn) use ($onServer) {
-            $serverHandshake = new SessionHandshake($conn, $this->sessionManager);
+            $serverHandshake = new Handshake($conn, $this->sessionManager);
             $serverHandshake->on('established', function (SessionInterface $session, $lastAck, $lastMerging) use ($conn, $onServer) {
                 $transfer = new Transfer($conn, $session, $lastAck, $lastMerging);
                 call_user_func($onServer, $transfer);
@@ -86,7 +86,7 @@ class TransferTest extends TestCase
         // Client setup
         $client = new Connector($this->loop);
         $client->connect("tcp://127.0.0.1:$port")->then(function (ConnectionInterface $conn) use ($onClient) {
-            $clientHandshake = new SessionHandshake($conn, $this->sessionManager);
+            $clientHandshake = new Handshake($conn, $this->sessionManager);
             $clientHandshake->handshake($this->clientSession);
             $clientHandshake->on('established', function (SessionInterface $session, $lastAck, $lastMerging) use ($conn, $onClient) {
                 $transfer = new Transfer($conn, $session, $lastAck, $lastMerging);
