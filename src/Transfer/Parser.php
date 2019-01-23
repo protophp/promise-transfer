@@ -31,10 +31,10 @@ class Parser implements ParserInterface
         if (!is_int($info[1]))
             throw new ParserException(ParserException::INVALID_ID);
 
-        if ($info[0] !== 0 || $info[0] !== 1)
+        if ($info[0] !== 0 && $info[0] !== 1)
             throw new ParserException(ParserException::INVALID_TYPE);
 
-        if ($info[2] !== 0 || $info[2] !== 1)
+        if ($info[2] !== 0 && $info[2] !== 1)
             throw new ParserException(ParserException::INVALID_SEQ);
 
         $this->pack = $pack;
