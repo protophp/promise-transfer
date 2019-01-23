@@ -3,11 +3,11 @@
 namespace Proto\Socket\Transfer;
 
 use Evenement\EventEmitter;
-use Proto\Pack\Pack;
 use Proto\Pack\PackInterface;
 use Proto\Pack\Unpack;
 use Proto\Pack\UnpackInterface;
 use Proto\Session\SessionInterface;
+use Proto\Socket\Transfer\Exception\ParserException;
 use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
 
@@ -47,20 +47,21 @@ class Transfer extends EventEmitter implements TransferInterface
     public function send(PackInterface $pack, callable $onAck = null)
     {
         list($id, $seq) = $this->queue->add($pack, $onAck);
-
-        // Transfer Pack Header: [DATA|ACK, ID, Seq]
-        $pack->setHeaderByKey(0, [self::TYPE_DATA, $id, $seq]);
-
-        $this->conn->write($pack->toString());
+        $this->conn->write(Parser::setDataHeader($pack, $id, $seq)->toString());
     }
 
     public function income(PackInterface $pack)
     {
-        $info = $pack->getHeaderByKey(0);
+        try {
+            $parser = new Parser($pack);
+        } catch (ParserException $e) {
+            // TODO: Close connection
+            return;
+        }
 
         // Is incoming ACK?
-        if ($info[0] === self::TYPE_ACK) {
-            $this->queue->ack($info[1]);
+        if ($parser->isAck()) {
+            $this->queue->ack($parser->getId());
             return;
         }
 
@@ -68,19 +69,24 @@ class Transfer extends EventEmitter implements TransferInterface
         $this->emit('data', [$pack]);
 
         // Send ACK
-        $this->session->set('LAST-ACK', [$info[1], $info[2]]);
-        $this->conn->write((new Pack())->setHeaderByKey(0, [self::TYPE_ACK, $info[1], $info[2]])->toString());
+        $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
+        $this->conn->write($parser->setAckHeader()->toString());
     }
 
     public function merging(PackInterface $pack)
     {
-        $info = $pack->getHeaderByKey(0);
+        try {
+            $parser = new Parser($pack);
+        } catch (ParserException $e) {
+            // TODO: Close connection
+            return;
+        }
 
         // skip on ack
-        if ($info[0] === self::TYPE_ACK)
+        if ($parser->isAck())
             return;
 
-        $this->session->set('LAST-MERGING', [$info[1], $info[2]]);
+        $this->session->set('LAST-MERGING', [$parser->getId(), $parser->getSeq()]);
     }
 
     /**
