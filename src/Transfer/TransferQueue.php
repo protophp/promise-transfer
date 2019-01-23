@@ -6,7 +6,7 @@ use Proto\Pack\PackInterface;
 
 class TransferQueue implements TransferQueueInterface
 {
-    private $queue = [null];
+    private $queue = [];
     private $seq = [];
 
     public function add(PackInterface $pack, callable $onAck = null): array
@@ -24,7 +24,7 @@ class TransferQueue implements TransferQueueInterface
         if (is_callable($this->queue[$id][1]))
             call_user_func($this->queue[$id][1]);
 
-        $this->queue[$id] = null;
+        unset($this->queue[$id]);
     }
 
     private function getIdleId()
