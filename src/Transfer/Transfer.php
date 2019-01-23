@@ -55,7 +55,8 @@ class Transfer extends EventEmitter implements TransferInterface
         try {
             $parser = new Parser($pack);
         } catch (ParserException $e) {
-            // TODO: Close connection
+            isset($this->logger) && $this->logger->critical("[Parser]: " . $e->getMsg());
+            $this->conn->close();   // TODO: must remove in resume feature
             return;
         }
 
@@ -78,7 +79,8 @@ class Transfer extends EventEmitter implements TransferInterface
         try {
             $parser = new Parser($pack);
         } catch (ParserException $e) {
-            // TODO: Close connection
+            isset($this->logger) && $this->logger->critical("[Parser]: " . $e->getMsg());
+            $this->conn->close();   // TODO: must remove on resume feature
             return;
         }
 
