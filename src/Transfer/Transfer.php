@@ -47,7 +47,10 @@ class Transfer extends EventEmitter implements TransferInterface
     public function send(PackInterface $pack, callable $onAck = null)
     {
         list($id, $seq) = $this->queue->add($pack, $onAck);
+
+        // Transfer Pack Header: [DATA|ACK, ID, Seq]
         $pack->setHeaderByKey(0, [self::TYPE_DATA, $id, $seq]);
+
         $this->conn->write($pack->toString());
     }
 
