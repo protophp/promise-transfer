@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Transmission;
+namespace Proto\Socket\Transfer;
 
 use Evenement\EventEmitterInterface;
 use Proto\Pack\PackInterface;

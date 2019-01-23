@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Transmission;
+namespace Proto\Socket\Transfer;
 
 use Proto\Pack\PackInterface;
 

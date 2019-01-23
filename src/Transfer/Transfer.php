@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Transmission;
+namespace Proto\Socket\Transfer;
 
 use Evenement\EventEmitter;
 use Proto\Pack\Pack;
@@ -66,7 +66,7 @@ class Transfer extends EventEmitter implements TransferInterface
 
         // Send ACK
         $this->session->set('LAST-ACK', [$info[1], $info[2]]);
-        $this->conn->write((new Pack())->setHeader([0 => [self::TYPE_ACK, $info[1], $info[2]]])->toString());
+        $this->conn->write((new Pack())->setHeaderByKey(0, [self::TYPE_ACK, $info[1], $info[2]])->toString());
     }
 
     public function merging(PackInterface $pack)
