@@ -8,6 +8,7 @@ use Proto\Pack\Unpack;
 use Proto\Pack\UnpackInterface;
 use Proto\Session\SessionInterface;
 use Proto\Socket\Transfer\Exception\ParserException;
+use Proto\Socket\Transfer\Exception\TransferException;
 use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
 
@@ -50,14 +51,18 @@ class Transfer extends EventEmitter implements TransferInterface
         $this->conn->write(Parser::setDataHeader($pack, $id, $seq)->toString());
     }
 
+    /**
+     * Process completed packs
+     * @param PackInterface $pack
+     * @throws TransferException
+     */
     public function income(PackInterface $pack)
     {
         try {
             $parser = new Parser($pack);
         } catch (ParserException $e) {
             isset($this->logger) && $this->logger->critical("[Parser]: " . $e->getMsg());
-            $this->conn->close();   // TODO: must remove in resume feature
-            return;
+            throw new TransferException(TransferException::PARSING_ERROR);
         }
 
         // Is incoming ACK?
@@ -74,14 +79,18 @@ class Transfer extends EventEmitter implements TransferInterface
         $this->conn->write($parser->setAckHeader()->toString());
     }
 
+    /**
+     * Mark incoming pack as merging
+     * @param PackInterface $pack
+     * @throws TransferException
+     */
     public function merging(PackInterface $pack)
     {
         try {
             $parser = new Parser($pack);
         } catch (ParserException $e) {
             isset($this->logger) && $this->logger->critical("[Parser]: " . $e->getMsg());
-            $this->conn->close();   // TODO: must remove on resume feature
-            return;
+            throw new TransferException(TransferException::PARSING_ERROR);
         }
 
         // skip on ack
