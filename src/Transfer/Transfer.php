@@ -10,7 +10,6 @@ use Proto\Session\SessionInterface;
 use Proto\Socket\Transfer\Exception\ParserException;
 use Proto\Socket\Transfer\Exception\TransferException;
 use Psr\Log\LoggerAwareTrait;
-use React\Socket\ConnectionInterface;
 
 class Transfer extends EventEmitter implements TransferInterface
 {
@@ -22,11 +21,6 @@ class Transfer extends EventEmitter implements TransferInterface
     private $session;
 
     /**
-     * @var ConnectionInterface
-     */
-    private $conn;
-
-    /**
      * @var UnpackInterface
      */
     private $unpack;
@@ -36,9 +30,8 @@ class Transfer extends EventEmitter implements TransferInterface
      */
     private $queue;
 
-    public function __construct(ConnectionInterface $conn, SessionInterface $session, $lastAck, $lastMerging)
+    public function __construct(SessionInterface $session)
     {
-        $this->conn = $conn;
         $this->session = $session;
 
         $this->initQueue();
@@ -48,7 +41,7 @@ class Transfer extends EventEmitter implements TransferInterface
     public function send(PackInterface $pack, callable $onAck = null)
     {
         list($id, $seq) = $this->queue->add($pack, $onAck);
-        $this->conn->write(Parser::setDataHeader($pack, $id, $seq)->toString());
+        $this->emit('onWrite', [Parser::setDataHeader($pack, $id, $seq)->toString()]);
     }
 
     /**
@@ -76,7 +69,7 @@ class Transfer extends EventEmitter implements TransferInterface
 
         // Send ACK
         $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
-        $this->conn->write($parser->setAckHeader()->toString());
+        $this->emit('onWrite', [$parser->setAckHeader()->toString()]);
     }
 
     /**
@@ -126,6 +119,6 @@ class Transfer extends EventEmitter implements TransferInterface
         $this->unpack->on('unpack', [$this, 'income']);
         $this->unpack->on('unpack-header', [$this, 'merging']);
 
-        $this->conn->on('data', [$this->unpack, 'feed']);
+        $this->on('onIncome', [$this->unpack, 'feed']);
     }
 }
