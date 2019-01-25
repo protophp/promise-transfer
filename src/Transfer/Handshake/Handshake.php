@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Handshake;
+namespace Proto\Socket\Transfer\Handshake;
 
 use Evenement\EventEmitter;
 use Proto\Pack\PackInterface;
@@ -8,17 +8,17 @@ use Proto\Pack\Unpack;
 use Proto\Session\Exception\SessionException;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManagerInterface;
+use Proto\Socket\Transfer\TransferInterface;
 use Psr\Log\LoggerAwareTrait;
-use React\Socket\ConnectionInterface;
 
 class Handshake extends EventEmitter implements HandshakeInterface
 {
     use LoggerAwareTrait;
 
     /**
-     * @var ConnectionInterface
+     * @var TransferInterface
      */
-    private $conn;
+    private $transfer;
 
     /**
      * @var Unpack
@@ -35,13 +35,13 @@ class Handshake extends EventEmitter implements HandshakeInterface
      */
     private $clientSession;
 
-    public function __construct(ConnectionInterface $conn, SessionManagerInterface $sessionManager)
+    public function __construct(TransferInterface $transfer, SessionManagerInterface $sessionManager)
     {
-        $this->conn = $conn;
+        $this->transfer = $transfer;
         $this->unpack = new Unpack();
         $this->sessionManager = $sessionManager;
 
-        $this->conn->on('data', [$this->unpack, 'feed']);
+        $this->transfer->on('onIncome', [$this->unpack, 'feed']);
         $this->unpack->on('unpack', [$this, 'unpack']);
     }
 
@@ -50,13 +50,13 @@ class Handshake extends EventEmitter implements HandshakeInterface
         $this->clientSession = $clientSession;
 
         if (!$clientSession->is('SERVER-SESSION-KEY'))
-            $this->conn->write((new Parser())->doRequest());
+            $this->transfer->emit('onWrite', [(new Parser())->doRequest()]);
         else
-            $this->conn->write((new Parser())->doRequest(
+            $this->transfer->emit('onWrite', [(new Parser())->doRequest(
                 $clientSession->get('SERVER-SESSION-KEY'),
                 $clientSession->get('LAST-ACK'),
                 $clientSession->get('LAST-MERGING')
-            ));
+            )]);
     }
 
     public function unpack(PackInterface $pack)
@@ -97,7 +97,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
             if (!$this->clientSession->is('SERVER-SESSION-KEY'))
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
-            $this->conn->removeAllListeners('data');
+            $this->transfer->removeAllListeners('onIncome');
             $this->emit('established', [$this->clientSession, $parser->getLastAck(), $parser->getLastMerging()]);
         });
 
@@ -113,14 +113,14 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
     private function established(ParserInterface $parser, SessionInterface $session)
     {
-        $this->conn->write(
+        $this->transfer->emit('onWrite', [
             $parser->doEstablished(
                 $session->getKey(),
                 $session->get('LAST-ACK'),
                 $session->get('LAST-MERGING')
             )
-        );
-        $this->conn->removeAllListeners('data');
+        ]);
+        $this->transfer->removeAllListeners('onIncome');
         $this->emit('established', [$session, $parser->getLastAck(), $parser->getLastMerging()]);
     }
 
@@ -134,7 +134,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
                 case SessionException::ERR_INVALID_SESSION_KEY:
                     isset($this->logger) && $this->logger->critical("[Handshake]: Invalid session's key! key: '$serverSessionKey'");
-                    $this->conn->write($parser->doError(Parser::ERR_INVALID_SESSION_KEY));
+                    $this->transfer->emit('onWrite', [$parser->doError(Parser::ERR_INVALID_SESSION_KEY)]);
                     break;
 
                 default:
@@ -144,7 +144,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
                         else
                             $this->logger->critical("[Handshake]: Something wrong in generate new session!");
                     }
-                    $this->conn->write($parser->doError(Parser::ERR_SOMETHING_WRONG));
+                    $this->transfer->emit('onWrite', [$parser->doError(Parser::ERR_SOMETHING_WRONG)]);
             }
             return false;
         }

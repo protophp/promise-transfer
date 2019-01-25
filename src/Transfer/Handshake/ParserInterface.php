@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Handshake;
+namespace Proto\Socket\Transfer\Handshake;
 
 use Proto\Pack\PackInterface;
 

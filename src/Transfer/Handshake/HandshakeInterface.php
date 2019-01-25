@@ -1,16 +1,16 @@
 <?php
 
-namespace Proto\Socket\Handshake;
+namespace Proto\Socket\Transfer\Handshake;
 
 use Evenement\EventEmitterInterface;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManagerInterface;
+use Proto\Socket\Transfer\TransferInterface;
 use Psr\Log\LoggerAwareInterface;
-use React\Socket\ConnectionInterface;
 
 interface HandshakeInterface extends EventEmitterInterface, LoggerAwareInterface
 {
-    public function __construct(ConnectionInterface $conn, SessionManagerInterface $sessionManager);
+    public function __construct(TransferInterface $transfer, SessionManagerInterface $sessionManager);
 
     public function handshake(SessionInterface $clientSession);
 }
