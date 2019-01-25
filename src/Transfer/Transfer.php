@@ -7,13 +7,20 @@ use Proto\Pack\PackInterface;
 use Proto\Pack\Unpack;
 use Proto\Pack\UnpackInterface;
 use Proto\Session\SessionInterface;
+use Proto\Session\SessionManagerInterface;
 use Proto\Socket\Transfer\Exception\ParserException;
 use Proto\Socket\Transfer\Exception\TransferException;
+use Proto\Socket\Transfer\Handshake\Handshake;
 use Psr\Log\LoggerAwareTrait;
 
 class Transfer extends EventEmitter implements TransferInterface
 {
     use LoggerAwareTrait;
+
+    /**
+     * @var SessionManagerInterface
+     */
+    private $sessionManager;
 
     /**
      * @var SessionInterface
@@ -30,12 +37,25 @@ class Transfer extends EventEmitter implements TransferInterface
      */
     private $queue;
 
-    public function __construct(SessionInterface $session)
+    public function __construct(SessionManagerInterface $sessionManager)
     {
-        $this->session = $session;
+        $this->sessionManager = $sessionManager;
+    }
 
-        $this->initQueue();
-        $this->initUnpack();
+    public function init(SessionInterface $clientSession = null)
+    {
+        $handshake = new Handshake($this, $this->sessionManager);
+        if ($clientSession !== null)
+            $handshake->handshake($clientSession);
+
+        $handshake->on('established', function (SessionInterface $session) {
+            $this->session = $session;
+
+            $this->initQueue();
+            $this->initUnpack();
+
+            $this->emit('established', [$this, $session]);
+        });
     }
 
     public function send(PackInterface $pack, callable $onAck = null)
