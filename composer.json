@@ -21,7 +21,7 @@
   ],
   "require": {
     "opt/opt": "^1.0",
-    "protophp/pack": "^0.2",
+    "protophp/pack": "^0.3",
     "protophp/session": "^1.0",
     "react/socket": "^1.0",
     "react/promise": "^2.0",

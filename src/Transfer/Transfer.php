@@ -121,10 +121,10 @@ class Transfer extends EventEmitter implements TransferInterface
 
         $this->unpack = $this->session->get('UNPACK');
         $this->unpack->removeAllListeners('unpack');
-        $this->unpack->removeAllListeners('header');
+        $this->unpack->removeAllListeners('unpack-header');
 
         $this->unpack->on('unpack', [$this, 'income']);
-        $this->unpack->on('header', [$this, 'merging']);
+        $this->unpack->on('unpack-header', [$this, 'merging']);
 
         $this->conn->on('data', [$this->unpack, 'feed']);
     }
