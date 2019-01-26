@@ -71,6 +71,9 @@ class ConnectionStub extends EventEmitter implements ConnectionInterface
 
     public function flush(int $bytes = null)
     {
+        if($this->data == '')
+            return;
+
         if ($bytes === null) {
             $flush = $this->data;
             $this->data = '';
