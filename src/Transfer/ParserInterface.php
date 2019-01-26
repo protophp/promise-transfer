@@ -9,6 +9,7 @@ interface ParserInterface
 {
     const TYPE_ACK = 0;
     const TYPE_DATA = 1;
+    const TYPE_RESPONSE = 2;
 
     /**
      * ParserInterface constructor.
@@ -21,9 +22,17 @@ interface ParserInterface
 
     public function getSeq(): int;
 
+    public function getResponseId(): int;
+
     public function isAck(): bool;
+
+    public function isResponse(): bool;
+
+    public function isWaitForResponse(): bool;
 
     public function setAckHeader(): PackInterface;
 
-    public static function setDataHeader(PackInterface $pack, int $id, int $seq): PackInterface;
+    public static function setDataHeader(PackInterface $pack, int $id, int $seq, bool $isWaitForResponse = false): PackInterface;
+
+    public static function setResponseHeader(PackInterface $pack, int $id, int $seq, int $responseId): PackInterface;
 }

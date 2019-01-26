@@ -15,5 +15,5 @@ interface TransferInterface extends LoggerAwareInterface, EventEmitterInterface
 
     public function __construct(ConnectionInterface $conn, SessionManagerInterface $sessionManager);
 
-    public function send(PackInterface $pack, callable $onAck = null);
+    public function send(PackInterface $pack, callable $onResponse = null, callable $onAck = null);
 }

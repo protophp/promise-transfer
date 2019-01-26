@@ -7,9 +7,11 @@ class ParserException extends \Exception
     const TYPE_NOT_FOUND = 1;
     const ID_NOT_FOUND = 2;
     const SEQ_NOT_FOUND = 3;
-    const INVALID_TYPE = 4;
-    const INVALID_ID = 5;
-    const INVALID_SEQ = 6;
+    const RESPONSE_ID_NOT_FOUND = 4;
+    const INVALID_TYPE = 5;
+    const INVALID_ID = 6;
+    const INVALID_SEQ = 7;
+    const INVALID_RESPONSE_ID = 8;
 
     const MSG = [
         self::TYPE_NOT_FOUND => "Transfer's Type not found!",

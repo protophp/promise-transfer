@@ -68,11 +68,20 @@ class Transfer extends EventEmitter implements TransferInterface
         });
     }
 
-    public function send(PackInterface $pack, callable $onAck = null)
+    public function send(PackInterface $pack, callable $onResponse = null, callable $onAck = null)
     {
-        list($id, $seq) = $this->queue->add($pack, $onAck);
-        $this->conn->write(Parser::setDataHeader($pack, $id, $seq)->toString());
-        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq is sent.");
+        list($id, $seq) = $this->queue->add($pack, $onResponse, $onAck);
+        $this->conn->write(
+            Parser::setDataHeader($pack, $id, $seq, is_callable($onResponse) ? true : false)->toString()
+        );
+        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.0 is sent.");
+    }
+
+    public function response(PackInterface $pack, int $responseId, callable $onAck = null)
+    {
+        list($id, $seq) = $this->queue->add($pack, null, $onAck);
+        $this->conn->write(Parser::setResponseHeader($pack, $id, $seq, $responseId)->toString());
+        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.$responseId is sent.");
     }
 
     /**
@@ -103,8 +112,15 @@ class Transfer extends EventEmitter implements TransferInterface
         $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
         $this->conn->write($parser->setAckHeader()->toString());
 
+        // Is response?
+        if ($parser->isResponse()) {
+            isset($this->logger) && $this->logger->debug("[Transfer]: The Response#{$parser->getResponseId()} is received.");
+            $this->queue->response($parser->getResponseId(), $pack);
+            return;
+        }
+
         // Emit data
-        $this->emit('data', [$pack]);
+        $this->emit('data', [$pack, $parser]);
     }
 
     /**

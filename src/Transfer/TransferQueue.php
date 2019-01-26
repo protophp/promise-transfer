@@ -9,11 +9,11 @@ class TransferQueue implements TransferQueueInterface
     private $queue = [];
     private $seq = [];
 
-    public function add(PackInterface $pack, callable $onAck = null): array
+    public function add(PackInterface $pack, callable $onResponse = null, callable $onAck = null): array
     {
         list($id, $seq) = $return = $this->getIdleId();
 
-        $this->queue[$id] = [$pack, $onAck];
+        $this->queue[$id] = [$pack, $onAck, $onResponse];
         $this->seq[$id] = $seq;
 
         return $return;
@@ -23,6 +23,19 @@ class TransferQueue implements TransferQueueInterface
     {
         if (is_callable($this->queue[$id][1]))
             call_user_func($this->queue[$id][1]);
+
+        // Wait for response
+        if (isset($this->queue[$id][2])) {
+            unset($this->queue[$id][0], $this->queue[$id][1]);
+        } else {
+            unset($this->queue[$id]);
+        }
+    }
+
+    public function response(int $id, PackInterface $pack)
+    {
+        if (is_callable($this->queue[$id][2]))
+            call_user_func($this->queue[$id][2], $pack);
 
         unset($this->queue[$id]);
     }
