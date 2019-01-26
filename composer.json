@@ -24,7 +24,6 @@
     "protophp/pack": "^0.3",
     "protophp/session": "^1.0",
     "react/socket": "^1.0",
-    "react/promise": "^2.0",
     "monolog/monolog": "^1.0",
     "evenement/evenement": "^3.0"
   },
