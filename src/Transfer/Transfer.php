@@ -52,8 +52,10 @@ class Transfer extends EventEmitter implements TransferInterface
     public function init(SessionInterface $clientSession = null)
     {
         $handshake = new Handshake($this);
-        if ($clientSession !== null)
+        if ($clientSession !== null) {
             $handshake->handshake($clientSession);
+            isset($this->logger) && $this->logger->debug('[Transfer]: The handshake request is sent.');
+        }
 
         $handshake->on('established', function (SessionInterface $session) {
             $this->session = $session;
@@ -61,6 +63,7 @@ class Transfer extends EventEmitter implements TransferInterface
             $this->initQueue();
             $this->initUnpack();
 
+            isset($this->logger) && $this->logger->debug('[Transfer]: The transfer established successfully.');
             $this->emit('established', [$this, $session]);
         });
     }
@@ -69,6 +72,7 @@ class Transfer extends EventEmitter implements TransferInterface
     {
         list($id, $seq) = $this->queue->add($pack, $onAck);
         $this->conn->write(Parser::setDataHeader($pack, $id, $seq)->toString());
+        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq is sent.");
     }
 
     /**
@@ -87,11 +91,15 @@ class Transfer extends EventEmitter implements TransferInterface
 
         // Is incoming ACK?
         if ($parser->isAck()) {
+            isset($this->logger) && $this->logger->debug("[Transfer]: The ACK#{$parser->getId()} is received.");
             $this->queue->ack($parser->getId());
             return;
         }
 
+        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#{$parser->getId()}.{$parser->getSeq()} is received.");
+
         // Send ACK
+        isset($this->logger) && $this->logger->debug("[Transfer]: The ACK#{$parser->getId()} is sent.");
         $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
         $this->conn->write($parser->setAckHeader()->toString());
 
@@ -117,6 +125,7 @@ class Transfer extends EventEmitter implements TransferInterface
         if ($parser->isAck())
             return;
 
+        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#{$parser->getId()}.{$parser->getSeq()} is added to merging.");
         $this->session->set('LAST-MERGING', [$parser->getId(), $parser->getSeq()]);
     }
 
