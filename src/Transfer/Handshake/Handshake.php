@@ -7,7 +7,6 @@ use Proto\Pack\PackInterface;
 use Proto\Pack\Unpack;
 use Proto\Session\Exception\SessionException;
 use Proto\Session\SessionInterface;
-use Proto\Session\SessionManagerInterface;
 use Proto\Socket\Transfer\Transfer;
 use Proto\Socket\Transfer\TransferInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -27,20 +26,14 @@ class Handshake extends EventEmitter implements HandshakeInterface
     private $unpack;
 
     /**
-     * @var SessionManagerInterface
-     */
-    private $sessionManager;
-
-    /**
      * @var SessionInterface
      */
     private $clientSession;
 
-    public function __construct(Transfer $transfer, SessionManagerInterface $sessionManager)
+    public function __construct(Transfer $transfer)
     {
         $this->transfer = $transfer;
         $this->unpack = new Unpack();
-        $this->sessionManager = $sessionManager;
 
         $this->transfer->conn->on('data', [$this->unpack, 'feed']);
         $this->unpack->on('unpack', [$this, 'unpack']);
@@ -128,7 +121,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
     private function sessionStart(ParserInterface $parser, $serverSessionKey = null)
     {
         try {
-            $session = $this->sessionManager->start($serverSessionKey);
+            $session = $this->transfer->sessionManager->start($serverSessionKey);
         } catch (SessionException $e) {
 
             switch ($e->getCode()) {

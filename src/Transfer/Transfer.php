@@ -21,7 +21,7 @@ class Transfer extends EventEmitter implements TransferInterface
     /**
      * @var SessionManagerInterface
      */
-    private $sessionManager;
+    public $sessionManager;
 
     /**
      * @var SessionInterface
