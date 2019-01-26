@@ -3,8 +3,9 @@
 namespace Proto\Socket\Tests;
 
 use Proto\Session\SessionInterface;
-use Proto\Socket\Transfer\Handshake\HandshakeInterface;
-use Proto\Socket\Transfer\TransferInterface;
+use Proto\Socket\Tests\Stub\ConnectionStub;
+use Proto\Socket\Transfer\Handshake\Handshake;
+use Proto\Socket\Transfer\Transfer;
 
 class TransferHandshakeTest extends TestCase
 {
@@ -15,13 +16,18 @@ class TransferHandshakeTest extends TestCase
 
     public function testNoneKey()
     {
-        /** @var TransferInterface $sTransfer */
-        /** @var TransferInterface $cTransfer */
-        list($sTransfer, $cTransfer) = $this->connSetup();
+        // Create new connection
+        $sConn = new ConnectionStub();
+        $cConn = new ConnectionStub();
+        $cConn->connect($sConn);
 
-        /** @var HandshakeInterface $sHandshake */
-        /** @var HandshakeInterface $cHandshake */
-        list($sHandshake, $cHandshake) = $this->handshakeSetup($sTransfer, $cTransfer);
+        // Setup the transfer
+        $sTransfer = new Transfer($sConn, $this->sessionManager);
+        $cTransfer = new Transfer($cConn, $this->sessionManager);
+
+        // Setup the handshake
+        $sHandshake = new Handshake($sTransfer);
+        $cHandshake = new Handshake($cTransfer);
 
         $sHandshake->on('established', function (SessionInterface $serverSession) {
             $this->serverSession = $serverSession;
@@ -30,42 +36,53 @@ class TransferHandshakeTest extends TestCase
         $cHandshake->on('established', function (SessionInterface $clientSession) {
             $this->assertSame($this->clientSession, $clientSession);
             $this->assertSame($this->clientSession->get('SERVER-SESSION-KEY'), $this->serverSession->getKey());
-            $this->loop->stop();
         });
 
+        // Handshake
         $cHandshake->handshake($this->clientSession);
 
-        $this->loop->run();
+        // Flush connections
+        $cConn->flush();
+        $sConn->flush();
+
+        $this->assertEquals(2, $this->getCount());
     }
 
     public function testWithKey()
     {
         $this->testNoneKey();
 
-        /** @var TransferInterface $sTransfer */
-        /** @var TransferInterface $cTransfer */
-        list($sTransfer, $cTransfer) = $this->connSetup();
+        // Create new connection
+        $sConn = new ConnectionStub();
+        $cConn = new ConnectionStub();
+        $cConn->connect($sConn);
 
-        /** @var HandshakeInterface $sHandshake */
-        /** @var HandshakeInterface $cHandshake */
-        list($sHandshake, $cHandshake) = $this->handshakeSetup($sTransfer, $cTransfer);
+        // Setup the transfer
+        $sTransfer = new Transfer($sConn, $this->sessionManager);
+        $cTransfer = new Transfer($cConn, $this->sessionManager);
+
+        // Setup the handshake
+        $sHandshake = new Handshake($sTransfer);
+        $cHandshake = new Handshake($cTransfer);
 
         $sHandshake->on('established', function (SessionInterface $serverSession) {
             // new server session and the old one is the same.
             $this->assertSame($this->serverSession, $serverSession);
         });
 
-        $cHandshake->on('established', function (SessionInterface $clientSession, $lastAck, $lastMerging) {
+        $cHandshake->on('established', function (SessionInterface $clientSession) {
             $this->assertSame($this->clientSession, $clientSession);
             $this->assertSame($this->clientSession->get('SERVER-SESSION-KEY'), $this->serverSession->getKey());
-            $this->assertNull($lastAck);
-            $this->assertNull($lastMerging);
-            $this->loop->stop();
         });
 
+        // Handshake
         $cHandshake->handshake($this->clientSession);
 
-        $this->loop->run();
+        // Flush connections
+        $cConn->flush();
+        $sConn->flush();
+
+        $this->assertEquals(6, $this->getCount());
     }
 
     public function testInvalidKey()
@@ -76,13 +93,18 @@ class TransferHandshakeTest extends TestCase
         $this->clientSession->set('SERVER-SESSION-KEY', 'Key-is-changed!');
         $SHE = false;   // Server Handshake Error
 
-        /** @var TransferInterface $sTransfer */
-        /** @var TransferInterface $cTransfer */
-        list($sTransfer, $cTransfer) = $this->connSetup();
+        // Create new connection
+        $sConn = new ConnectionStub();
+        $cConn = new ConnectionStub();
+        $cConn->connect($sConn);
 
-        /** @var HandshakeInterface $sHandshake */
-        /** @var HandshakeInterface $cHandshake */
-        list($sHandshake, $cHandshake) = $this->handshakeSetup($sTransfer, $cTransfer);
+        // Setup the transfer
+        $sTransfer = new Transfer($sConn, $this->sessionManager);
+        $cTransfer = new Transfer($cConn, $this->sessionManager);
+
+        // Setup the handshake
+        $sHandshake = new Handshake($sTransfer);
+        $cHandshake = new Handshake($cTransfer);
 
         $sHandshake->on('error', function () use (&$SHE) {
             $SHE = true;
@@ -90,11 +112,15 @@ class TransferHandshakeTest extends TestCase
 
         $cHandshake->on('error', function () use (&$SHE) {
             $this->assertTrue($SHE);
-            $this->loop->stop();
         });
 
+        // Handshake
         $cHandshake->handshake($this->clientSession);
 
-        $this->loop->run();
+        // Flush connections
+        $cConn->flush();
+        $sConn->flush();
+
+        $this->assertEquals(4, $this->getCount());
     }
 }
