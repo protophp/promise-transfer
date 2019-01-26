@@ -8,6 +8,7 @@ use Proto\Pack\Unpack;
 use Proto\Session\Exception\SessionException;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManagerInterface;
+use Proto\Socket\Transfer\Transfer;
 use Proto\Socket\Transfer\TransferInterface;
 use Psr\Log\LoggerAwareTrait;
 
@@ -35,13 +36,13 @@ class Handshake extends EventEmitter implements HandshakeInterface
      */
     private $clientSession;
 
-    public function __construct(TransferInterface $transfer, SessionManagerInterface $sessionManager)
+    public function __construct(Transfer $transfer, SessionManagerInterface $sessionManager)
     {
         $this->transfer = $transfer;
         $this->unpack = new Unpack();
         $this->sessionManager = $sessionManager;
 
-        $this->transfer->on('onIncome', [$this->unpack, 'feed']);
+        $this->transfer->conn->on('data', [$this->unpack, 'feed']);
         $this->unpack->on('unpack', [$this, 'unpack']);
     }
 
@@ -50,13 +51,13 @@ class Handshake extends EventEmitter implements HandshakeInterface
         $this->clientSession = $clientSession;
 
         if (!$clientSession->is('SERVER-SESSION-KEY'))
-            $this->transfer->emit('onWrite', [(new Parser())->doRequest()]);
+            $this->transfer->conn->write((new Parser())->doRequest());
         else
-            $this->transfer->emit('onWrite', [(new Parser())->doRequest(
+            $this->transfer->conn->write((new Parser())->doRequest(
                 $clientSession->get('SERVER-SESSION-KEY'),
                 $clientSession->get('LAST-ACK'),
                 $clientSession->get('LAST-MERGING')
-            )]);
+            ));
     }
 
     public function unpack(PackInterface $pack)
@@ -97,7 +98,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
             if (!$this->clientSession->is('SERVER-SESSION-KEY'))
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
-            $this->transfer->removeAllListeners('onIncome');
+            $this->transfer->conn->removeAllListeners('data');
             $this->emit('established', [$this->clientSession, $parser->getLastAck(), $parser->getLastMerging()]);
         });
 
@@ -113,14 +114,14 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
     private function established(ParserInterface $parser, SessionInterface $session)
     {
-        $this->transfer->emit('onWrite', [
+        $this->transfer->conn->write(
             $parser->doEstablished(
                 $session->getKey(),
                 $session->get('LAST-ACK'),
                 $session->get('LAST-MERGING')
             )
-        ]);
-        $this->transfer->removeAllListeners('onIncome');
+        );
+        $this->transfer->conn->removeAllListeners('data');
         $this->emit('established', [$session, $parser->getLastAck(), $parser->getLastMerging()]);
     }
 
@@ -134,7 +135,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
                 case SessionException::ERR_INVALID_SESSION_KEY:
                     isset($this->logger) && $this->logger->critical("[Handshake]: Invalid session's key! key: '$serverSessionKey'");
-                    $this->transfer->emit('onWrite', [$parser->doError(Parser::ERR_INVALID_SESSION_KEY)]);
+                    $this->transfer->conn->write($parser->doError(Parser::ERR_INVALID_SESSION_KEY));
                     break;
 
                 default:
@@ -144,7 +145,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
                         else
                             $this->logger->critical("[Handshake]: Something wrong in generate new session!");
                     }
-                    $this->transfer->emit('onWrite', [$parser->doError(Parser::ERR_SOMETHING_WRONG)]);
+                    $this->transfer->conn->write($parser->doError(Parser::ERR_SOMETHING_WRONG));
             }
             return false;
         }

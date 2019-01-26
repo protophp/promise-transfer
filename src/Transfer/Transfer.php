@@ -12,6 +12,7 @@ use Proto\Socket\Transfer\Exception\ParserException;
 use Proto\Socket\Transfer\Exception\TransferException;
 use Proto\Socket\Transfer\Handshake\Handshake;
 use Psr\Log\LoggerAwareTrait;
+use React\Socket\ConnectionInterface;
 
 class Transfer extends EventEmitter implements TransferInterface
 {
@@ -37,8 +38,14 @@ class Transfer extends EventEmitter implements TransferInterface
      */
     private $queue;
 
-    public function __construct(SessionManagerInterface $sessionManager)
+    /**
+     * @var ConnectionInterface
+     */
+    public $conn;
+
+    public function __construct(ConnectionInterface $conn, SessionManagerInterface $sessionManager)
     {
+        $this->conn = $conn;
         $this->sessionManager = $sessionManager;
     }
 
@@ -61,7 +68,7 @@ class Transfer extends EventEmitter implements TransferInterface
     public function send(PackInterface $pack, callable $onAck = null)
     {
         list($id, $seq) = $this->queue->add($pack, $onAck);
-        $this->emit('onWrite', [Parser::setDataHeader($pack, $id, $seq)->toString()]);
+        $this->conn->write(Parser::setDataHeader($pack, $id, $seq)->toString());
     }
 
     /**
@@ -89,7 +96,7 @@ class Transfer extends EventEmitter implements TransferInterface
 
         // Send ACK
         $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
-        $this->emit('onWrite', [$parser->setAckHeader()->toString()]);
+        $this->conn->write($parser->setAckHeader()->toString());
     }
 
     /**
