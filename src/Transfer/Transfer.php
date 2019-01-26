@@ -51,7 +51,7 @@ class Transfer extends EventEmitter implements TransferInterface
 
     public function init(SessionInterface $clientSession = null)
     {
-        $handshake = new Handshake($this, $this->sessionManager);
+        $handshake = new Handshake($this);
         if ($clientSession !== null)
             $handshake->handshake($clientSession);
 
@@ -91,12 +91,12 @@ class Transfer extends EventEmitter implements TransferInterface
             return;
         }
 
-        // Emit data
-        $this->emit('data', [$pack]);
-
         // Send ACK
         $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
         $this->conn->write($parser->setAckHeader()->toString());
+
+        // Emit data
+        $this->emit('data', [$pack]);
     }
 
     /**
@@ -146,6 +146,6 @@ class Transfer extends EventEmitter implements TransferInterface
         $this->unpack->on('unpack', [$this, 'income']);
         $this->unpack->on('unpack-header', [$this, 'merging']);
 
-        $this->on('onIncome', [$this->unpack, 'feed']);
+        $this->conn->on('data', [$this->unpack, 'feed']);
     }
 }
