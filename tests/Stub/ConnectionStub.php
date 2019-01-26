@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Tests\Stub;
+namespace Proto\PromiseTransfer\Tests\Stub;
 
 use Evenement\EventEmitter;
 use Psr\Log\LoggerAwareTrait;

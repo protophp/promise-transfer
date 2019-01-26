@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Tests;
+namespace Proto\PromiseTransfer\Tests;
 
 use Proto\Session\Exception\SessionException;
 use Proto\Session\SessionInterface;

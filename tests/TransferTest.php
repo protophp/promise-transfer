@@ -1,15 +1,15 @@
 <?php
 
-namespace Proto\Socket\Tests;
+namespace Proto\PromiseTransfer\Tests;
 
 use Monolog\Handler\ErrorLogHandler;
 use Monolog\Logger;
 use Proto\Pack\Pack;
 use Proto\Pack\PackInterface;
-use Proto\Socket\Tests\Stub\ConnectionStub;
-use Proto\Socket\Transfer\ParserInterface;
-use Proto\Socket\Transfer\Transfer;
-use Proto\Socket\Transfer\TransferInterface;
+use Proto\PromiseTransfer\Tests\Stub\ConnectionStub;
+use Proto\PromiseTransfer\ParserInterface;
+use Proto\PromiseTransfer\PromiseTransfer;
+use Proto\PromiseTransfer\PromiseTransferInterface;
 
 class TransferTest extends TestCase
 {
@@ -25,8 +25,8 @@ class TransferTest extends TestCase
         $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
 
         // Setup the transfer
-        $sTransfer = new Transfer($sConn, $this->sessionManager);
-        $cTransfer = new Transfer($cConn, $this->sessionManager);
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
 
         $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
         $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
@@ -35,7 +35,7 @@ class TransferTest extends TestCase
         $sTransfer->init();
         $cTransfer->init($this->clientSession);
 
-        $sTransfer->on('established', function (TransferInterface $transfer) use ($sConn) {
+        $sTransfer->on('established', function (PromiseTransferInterface $transfer) use ($sConn) {
             $transfer->on('data', function (PackInterface $pack, ParserInterface $parser) use ($sConn) {
                 $this->assertFalse($parser->isWaitForResponse());
                 $this->assertSame('FOO-BAR', $pack->getData());
@@ -43,7 +43,7 @@ class TransferTest extends TestCase
             });
         });
 
-        $cTransfer->on('established', function (TransferInterface $transfer) use ($cConn) {
+        $cTransfer->on('established', function (PromiseTransferInterface $transfer) use ($cConn) {
             $transfer->send((new Pack())->setData('FOO-BAR'), null, function () {
                 $this->assertEquals(2, $this->getCount());
             });
@@ -67,8 +67,8 @@ class TransferTest extends TestCase
         $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
 
         // Setup the transfer
-        $sTransfer = new Transfer($sConn, $this->sessionManager);
-        $cTransfer = new Transfer($cConn, $this->sessionManager);
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
 
         $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
         $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
@@ -77,7 +77,7 @@ class TransferTest extends TestCase
         $sTransfer->init();
         $cTransfer->init($this->clientSession);
 
-        $sTransfer->on('established', function (TransferInterface $transfer) use ($sConn, $sTransfer) {
+        $sTransfer->on('established', function (PromiseTransferInterface $transfer) use ($sConn, $sTransfer) {
             $transfer->on('data', function (PackInterface $pack, ParserInterface $parser) use ($sConn, $sTransfer) {
                 $this->assertTrue($parser->isWaitForResponse());
                 $this->assertSame('FOO-BAR', $pack->getData());
@@ -89,7 +89,7 @@ class TransferTest extends TestCase
             });
         });
 
-        $cTransfer->on('established', function (TransferInterface $transfer) use ($cConn) {
+        $cTransfer->on('established', function (PromiseTransferInterface $transfer) use ($cConn) {
             $transfer->send(
                 (new Pack())->setData('FOO-BAR'),
                 function (PackInterface $pack) {

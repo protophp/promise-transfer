@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Transfer\Exception;
+namespace Proto\PromiseTransfer\Exception;
 
 class ParserException extends \Exception
 {

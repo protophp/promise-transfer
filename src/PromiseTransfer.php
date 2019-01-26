@@ -1,6 +1,6 @@
 <?php
 
-namespace Proto\Socket\Transfer;
+namespace Proto\PromiseTransfer;
 
 use Evenement\EventEmitter;
 use Proto\Pack\PackInterface;
@@ -8,13 +8,13 @@ use Proto\Pack\Unpack;
 use Proto\Pack\UnpackInterface;
 use Proto\Session\SessionInterface;
 use Proto\Session\SessionManagerInterface;
-use Proto\Socket\Transfer\Exception\ParserException;
-use Proto\Socket\Transfer\Exception\TransferException;
-use Proto\Socket\Transfer\Handshake\Handshake;
+use Proto\PromiseTransfer\Exception\ParserException;
+use Proto\PromiseTransfer\Exception\TransferException;
+use Proto\PromiseTransfer\Handshake\Handshake;
 use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
 
-class Transfer extends EventEmitter implements TransferInterface
+class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
 {
     use LoggerAwareTrait;
 
@@ -34,7 +34,7 @@ class Transfer extends EventEmitter implements TransferInterface
     private $unpack;
 
     /**
-     * @var TransferQueueInterface
+     * @var QueueInterface
      */
     private $queue;
 
@@ -151,7 +151,7 @@ class Transfer extends EventEmitter implements TransferInterface
     private function initQueue()
     {
         if (!$this->session->is('TRANSFER-QUEUE'))
-            $this->session->set('TRANSFER-QUEUE', new TransferQueue());
+            $this->session->set('TRANSFER-QUEUE', new Queue());
 
         $this->queue = $this->session->get('TRANSFER-QUEUE');
     }

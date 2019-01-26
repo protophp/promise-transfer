@@ -1,9 +1,9 @@
 <?php
 
-namespace Proto\Socket\Transfer;
+namespace Proto\PromiseTransfer;
 
 use Proto\Pack\PackInterface;
-use Proto\Socket\Transfer\Exception\ParserException;
+use Proto\PromiseTransfer\Exception\ParserException;
 
 class Parser implements ParserInterface
 {

@@ -1,12 +1,14 @@
 {
-  "name": "protophp/socket",
-  "description": "A TCP and UNIX socket for Inter-Server communication with delivery and reply features in the application layer in PHP.",
+  "name": "protophp/promise-transfer",
+  "description": "A mechanism in for reliable transmission data over unreliable long-lived socket connections with delivery, response and resume ability in PHP",
   "keywords": [
     "socket",
     "tcp",
     "unix-socket",
     "delivery",
     "reply",
+    "response",
+    "resume",
     "php",
     "inter-service-communication",
     "s2s"
@@ -32,12 +34,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Proto\\Socket\\": "src"
+      "Proto\\PromiseTransfer\\": "src"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Proto\\Socket\\Tests\\": "tests"
+      "Proto\\PromiseTransfer\\Tests\\": "tests"
     }
   }
 }

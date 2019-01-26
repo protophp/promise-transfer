@@ -1,10 +1,10 @@
 <?php
 
-namespace Proto\Socket\Transfer;
+namespace Proto\PromiseTransfer;
 
 use Proto\Pack\PackInterface;
 
-class TransferQueue implements TransferQueueInterface
+class Queue implements QueueInterface
 {
     private $queue = [];
     private $seq = [];

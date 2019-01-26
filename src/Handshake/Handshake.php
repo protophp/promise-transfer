@@ -1,14 +1,14 @@
 <?php
 
-namespace Proto\Socket\Transfer\Handshake;
+namespace Proto\PromiseTransfer\Handshake;
 
 use Evenement\EventEmitter;
 use Proto\Pack\PackInterface;
 use Proto\Pack\Unpack;
 use Proto\Session\Exception\SessionException;
 use Proto\Session\SessionInterface;
-use Proto\Socket\Transfer\Transfer;
-use Proto\Socket\Transfer\TransferInterface;
+use Proto\PromiseTransfer\PromiseTransfer;
+use Proto\PromiseTransfer\PromiseTransferInterface;
 use Psr\Log\LoggerAwareTrait;
 
 class Handshake extends EventEmitter implements HandshakeInterface
@@ -16,7 +16,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
     use LoggerAwareTrait;
 
     /**
-     * @var TransferInterface
+     * @var PromiseTransferInterface
      */
     private $transfer;
 
@@ -30,7 +30,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
      */
     private $clientSession;
 
-    public function __construct(Transfer $transfer)
+    public function __construct(PromiseTransfer $transfer)
     {
         $this->transfer = $transfer;
         $this->unpack = new Unpack();

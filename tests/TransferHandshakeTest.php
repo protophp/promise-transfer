@@ -1,11 +1,11 @@
 <?php
 
-namespace Proto\Socket\Tests;
+namespace Proto\PromiseTransfer\Tests;
 
 use Proto\Session\SessionInterface;
-use Proto\Socket\Tests\Stub\ConnectionStub;
-use Proto\Socket\Transfer\Handshake\Handshake;
-use Proto\Socket\Transfer\Transfer;
+use Proto\PromiseTransfer\Tests\Stub\ConnectionStub;
+use Proto\PromiseTransfer\Handshake\Handshake;
+use Proto\PromiseTransfer\PromiseTransfer;
 
 class TransferHandshakeTest extends TestCase
 {
@@ -22,8 +22,8 @@ class TransferHandshakeTest extends TestCase
         $cConn->connect($sConn);
 
         // Setup the transfer
-        $sTransfer = new Transfer($sConn, $this->sessionManager);
-        $cTransfer = new Transfer($cConn, $this->sessionManager);
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
 
         // Setup the handshake
         $sHandshake = new Handshake($sTransfer);
@@ -58,8 +58,8 @@ class TransferHandshakeTest extends TestCase
         $cConn->connect($sConn);
 
         // Setup the transfer
-        $sTransfer = new Transfer($sConn, $this->sessionManager);
-        $cTransfer = new Transfer($cConn, $this->sessionManager);
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
 
         // Setup the handshake
         $sHandshake = new Handshake($sTransfer);
@@ -99,8 +99,8 @@ class TransferHandshakeTest extends TestCase
         $cConn->connect($sConn);
 
         // Setup the transfer
-        $sTransfer = new Transfer($sConn, $this->sessionManager);
-        $cTransfer = new Transfer($cConn, $this->sessionManager);
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
 
         // Setup the handshake
         $sHandshake = new Handshake($sTransfer);

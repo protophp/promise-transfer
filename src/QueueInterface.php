@@ -1,10 +1,10 @@
 <?php
 
-namespace Proto\Socket\Transfer;
+namespace Proto\PromiseTransfer;
 
 use Proto\Pack\PackInterface;
 
-interface TransferQueueInterface
+interface QueueInterface
 {
     public function add(PackInterface $pack, callable $onResponse = null, callable $onAck = null): array;
 
