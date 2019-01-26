@@ -3,12 +3,15 @@
 namespace Proto\Socket\Tests\Stub;
 
 use Evenement\EventEmitter;
+use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
 use React\Stream\Util;
 use React\Stream\WritableStreamInterface;
 
 class ConnectionStub extends EventEmitter implements ConnectionInterface
 {
+    use LoggerAwareTrait;
+
     private $data = '';
 
     /**
@@ -44,7 +47,7 @@ class ConnectionStub extends EventEmitter implements ConnectionInterface
     public function write($data)
     {
         $this->data .= $data;
-
+        isset($this->logger) && $this->logger->debug('BUFFER: ' . $this->data);
         return true;
     }
 
@@ -69,17 +72,19 @@ class ConnectionStub extends EventEmitter implements ConnectionInterface
     public function flush(int $bytes = null)
     {
         if ($bytes === null) {
-            $this->remote->emit('data', [$this->data]);
+            $flush = $this->data;
             $this->data = '';
         } else {
-            $this->remote->emit('data', [substr($this->data, 0, $bytes)]);
+            $flush = substr($this->data, 0, $bytes);
             $this->data = substr($this->data, $bytes);
         }
+        isset($this->logger) && $this->logger->debug('FLUSH: ' . $flush);
+        $this->remote->emit('data', [$flush]);
     }
 
     public function connect(ConnectionInterface $conn)
     {
-        if(isset($this->remote))
+        if (isset($this->remote))
             return;
 
         $this->remote = $conn;
