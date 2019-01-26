@@ -2,98 +2,55 @@
 
 namespace Proto\Socket\Tests;
 
-use PHPUnit\Framework\TestCase;
+use Monolog\Handler\ErrorLogHandler;
+use Monolog\Logger;
 use Proto\Pack\Pack;
 use Proto\Pack\PackInterface;
-use Proto\Session\SessionInterface;
-use Proto\Session\SessionManager;
-use Proto\Socket\Handshake\Handshake;
+use Proto\Socket\Tests\Stub\ConnectionStub;
 use Proto\Socket\Transfer\Transfer;
 use Proto\Socket\Transfer\TransferInterface;
-use React\EventLoop\Factory;
-use React\Socket\ConnectionInterface;
-use React\Socket\Connector;
-use React\Socket\Server;
 
 class TransferTest extends TestCase
 {
-    /**
-     * @var SessionManager
-     */
-    private $sessionManager;
-
-    /**
-     * @var SessionInterface
-     */
-    private $clientSession;
-
-    /**
-     * @var
-     */
-    private $loop;
-
-    /**
-     * SessionHandshakeTest constructor.
-     * @param string|null $name
-     * @param array $data
-     * @param string $dataName
-     * @throws \Proto\Session\Exception\SessionException
-     */
-    public function __construct(string $name = null, array $data = [], string $dataName = '')
-    {
-        parent::__construct($name, $data, $dataName);
-
-        $this->sessionManager = new SessionManager();
-        $this->clientSession = $this->sessionManager->start();
-        $this->loop = Factory::create();
-    }
 
     public function testSendAndDelivery()
     {
-        $this->prepare(
-            function (TransferInterface $serverTransfer) {
-                $serverTransfer->on('data', function (PackInterface $pack) {
-                    $this->assertSame('FOO-BAR', $pack->getData());
-                });
-            },
-            function (TransferInterface $clientTransfer) {
-                $clientTransfer->send((new Pack())->setData('FOO-BAR'), function () {
-                    $this->loop->stop();
-                });
-            }
-        );
-        $this->loop->run();
-    }
+        // Create new connection
+        $sConn = new ConnectionStub();
+        $cConn = new ConnectionStub();
+        $cConn->connect($sConn);
 
-    private function prepare(callable $onServer, callable $onClient)
-    {
-        // Find an unused unprivileged TCP port
-        $port = (int)shell_exec('netstat -atn | awk \' /tcp/ {printf("%s\n",substr($4,index($4,":")+1,length($4) )) }\' | sed -e "s/://g" | sort -rnu | awk \'{array [$1] = $1} END {i=32768; again=1; while (again == 1) {if (array[i] == i) {i=i+1} else {print i; again=0}}}\'');
+        $sConn->setLogger(new Logger('ServerConn', [new ErrorLogHandler()]));
+        $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
 
-        // Server setup
-        $server = new Server("tcp://127.0.0.1:$port", $this->loop);
-        $server->on('connection', function (ConnectionInterface $conn) use ($onServer) {
-            $serverHandshake = new Handshake($conn, $this->sessionManager);
-            $serverHandshake->on('established', function (SessionInterface $session, $lastAck, $lastMerging) use ($conn, $onServer) {
-                $transfer = new Transfer($conn, $session, $lastAck, $lastMerging);
-                call_user_func($onServer, $transfer);
+        // Setup the transfer
+        $sTransfer = new Transfer($sConn, $this->sessionManager);
+        $cTransfer = new Transfer($cConn, $this->sessionManager);
+
+        $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
+        $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
+
+        // Init the transfer
+        $sTransfer->init();
+        $cTransfer->init($this->clientSession);
+
+        $sTransfer->on('established', function (TransferInterface $transfer) use ($sConn) {
+            $transfer->on('data', function (PackInterface $pack) use ($sConn) {
+                $this->assertSame('FOO-BAR', $pack->getData());
+                $sConn->flush();
             });
         });
-        $server->on('error', function (\Exception $e) {
-            die($e->getTraceAsString());
+
+        $cTransfer->on('established', function (TransferInterface $transfer) use ($cConn) {
+            $transfer->send((new Pack())->setData('FOO-BAR'), function () {
+                $this->assertEquals(1, $this->getCount());
+            });
+            $cConn->flush();
         });
 
-        // Client setup
-        $client = new Connector($this->loop);
-        $client->connect("tcp://127.0.0.1:$port")->then(function (ConnectionInterface $conn) use ($onClient) {
-            $clientHandshake = new Handshake($conn, $this->sessionManager);
-            $clientHandshake->handshake($this->clientSession);
-            $clientHandshake->on('established', function (SessionInterface $session, $lastAck, $lastMerging) use ($conn, $onClient) {
-                $transfer = new Transfer($conn, $session, $lastAck, $lastMerging);
-                call_user_func($onClient, $transfer);
-            });
-        })->otherwise(function (\Exception $e) {
-            die($e->getTraceAsString());
-        });
+        $cConn->flush();
+        $sConn->flush();
+
+        $this->assertEquals(2, $this->getCount());
     }
 }
