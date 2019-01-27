@@ -77,11 +77,11 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.0 is sent.");
     }
 
-    public function response(PackInterface $pack, int $responseId, callable $onAck = null)
+    public function response(PackInterface $pack, int $targetPackId, callable $onAck = null)
     {
         list($id, $seq) = $this->queue->add($pack, null, $onAck);
-        $this->conn->write(Parser::setResponseHeader($pack, $id, $seq, $responseId)->toString());
-        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.$responseId is sent.");
+        $this->conn->write(Parser::setResponseHeader($pack, $id, $seq, $targetPackId)->toString());
+        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.$targetPackId is sent.");
     }
 
     /**
