@@ -2,6 +2,8 @@
 
 namespace Proto\PromiseTransfer\Tests;
 
+use Monolog\Handler\ErrorLogHandler;
+use Monolog\Logger;
 use Proto\Session\SessionInterface;
 use Proto\PromiseTransfer\Tests\Stub\ConnectionStub;
 use Proto\PromiseTransfer\Handshake\Handshake;
@@ -28,6 +30,10 @@ class TransferHandshakeTest extends TestCase
         // Setup the handshake
         $sHandshake = new Handshake($sTransfer);
         $cHandshake = new Handshake($cTransfer);
+
+        // Set logger
+        $sHandshake->setLogger(new Logger('ServerHandshake', [new ErrorLogHandler()]));
+        $cHandshake->setLogger(new Logger('ClientHandshake', [new ErrorLogHandler()]));
 
         $sHandshake->on('established', function (SessionInterface $serverSession) {
             $this->serverSession = $serverSession;
@@ -64,6 +70,10 @@ class TransferHandshakeTest extends TestCase
         // Setup the handshake
         $sHandshake = new Handshake($sTransfer);
         $cHandshake = new Handshake($cTransfer);
+
+        // Set logger
+        $sHandshake->setLogger(new Logger('ServerHandshake', [new ErrorLogHandler()]));
+        $cHandshake->setLogger(new Logger('ClientHandshake', [new ErrorLogHandler()]));
 
         $sHandshake->on('established', function (SessionInterface $serverSession) {
             // new server session and the old one is the same.
@@ -105,6 +115,10 @@ class TransferHandshakeTest extends TestCase
         // Setup the handshake
         $sHandshake = new Handshake($sTransfer);
         $cHandshake = new Handshake($cTransfer);
+
+        // Set logger
+        $sHandshake->setLogger(new Logger('ServerHandshake', [new ErrorLogHandler()]));
+        $cHandshake->setLogger(new Logger('ClientHandshake', [new ErrorLogHandler()]));
 
         $sHandshake->on('error', function () use (&$SHE) {
             $SHE = true;

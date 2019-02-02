@@ -43,13 +43,19 @@ class Handshake extends EventEmitter implements HandshakeInterface
     {
         $this->clientSession = $clientSession;
 
-        if (!$clientSession->is('SERVER-SESSION-KEY'))
+        if (!$clientSession->is('SERVER-SESSION-KEY')) {
+            isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The new request sent.');
             $this->transfer->conn->write((new Parser())->doRequest());
-        else
+
+        } else {
+            $serverSessionKey = $clientSession->get('SERVER-SESSION-KEY');
+
+            isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The recovery request sent. SessionKey: ' . $serverSessionKey);
             $this->transfer->conn->write((new Parser())->doRequest(
-                $clientSession->get('SERVER-SESSION-KEY'),
+                $serverSessionKey,
                 $clientSession->get('LAST-PROGRESS')
             ));
+        }
     }
 
     public function unpack(PackInterface $pack)
@@ -64,8 +70,10 @@ class Handshake extends EventEmitter implements HandshakeInterface
                 if ($parser->isServerSessionKey()) {
                     $serverSessionKey = $parser->getServerSessionKey();
 
+                    isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The incoming recovery request received. SessionKey: ' . $serverSessionKey);
                     $session = $this->sessionStart($parser, $serverSessionKey);
                     if ($session === false) {
+                        isset($this->logger) && $this->logger->critical('[PromiseTransfer/Handshake] Unable to recover session!');
                         $this->emit('error');
                         return;
                     }
@@ -75,8 +83,10 @@ class Handshake extends EventEmitter implements HandshakeInterface
                 }
 
                 // New session
+                isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The incoming new request received.');
                 $session = $this->sessionStart($parser);
                 if ($session === false) {
+                    isset($this->logger) && $this->logger->critical('[PromiseTransfer/Handshake] Unable to start new session!');
                     $this->emit('error');
                     return;
                 }
@@ -87,16 +97,19 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
         // On established (client side)
         $parser->onEstablished(function () use ($parser) {
+            isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The session is establishing...');
+
             if (!$this->clientSession->is('SERVER-SESSION-KEY'))
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
             $this->transfer->conn->removeAllListeners('data');
             $this->emit('established', [$this->clientSession, $parser->getLastProgress()]);
+            isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
         });
 
         // On Error
         $parser->onError(function () {
-            isset($this->logger) && $this->logger->critical("[Handshake] Handshake failed from remote host!");
+            isset($this->logger) && $this->logger->critical("[PromiseTransfer/Handshake] Something wrong with the remote host!");
             $this->emit('error');
         });
 
@@ -106,6 +119,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
     private function established(ParserInterface $parser, SessionInterface $session)
     {
+        isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The establishing message is sent to client. SessionKey: '.$session->getKey());
         $this->transfer->conn->write(
             $parser->doEstablished(
                 $session->getKey(),
@@ -114,6 +128,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
         );
         $this->transfer->conn->removeAllListeners('data');
         $this->emit('established', [$session, $parser->getLastProgress()]);
+        isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
     }
 
     private function sessionStart(ParserInterface $parser, $serverSessionKey = null)
@@ -125,16 +140,16 @@ class Handshake extends EventEmitter implements HandshakeInterface
             switch ($e->getCode()) {
 
                 case SessionException::ERR_INVALID_SESSION_KEY:
-                    isset($this->logger) && $this->logger->critical("[Handshake]: Invalid session's key! key: '$serverSessionKey'");
+                    isset($this->logger) && $this->logger->critical("[PromiseTransfer/Handshake] Invalid session's key!");
                     $this->transfer->conn->write($parser->doError(Parser::ERR_INVALID_SESSION_KEY));
                     break;
 
                 default:
                     if (isset($this->logger)) {
                         if (isset($serverSessionKey))
-                            $this->logger->critical("[Handshake]: Something wrong in recover session! key: '$serverSessionKey'");
+                            $this->logger->critical("[PromiseTransfer/Handshake] Something wrong in recover session!");
                         else
-                            $this->logger->critical("[Handshake]: Something wrong in generate new session!");
+                            $this->logger->critical("[PromiseTransfer/Handshake] Something wrong in generate new session!");
                     }
                     $this->transfer->conn->write($parser->doError(Parser::ERR_SOMETHING_WRONG));
             }
