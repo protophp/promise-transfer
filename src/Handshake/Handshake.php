@@ -48,8 +48,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
         else
             $this->transfer->conn->write((new Parser())->doRequest(
                 $clientSession->get('SERVER-SESSION-KEY'),
-                $clientSession->get('LAST-ACK'),
-                $clientSession->get('LAST-MERGING')
+                $clientSession->get('LAST-PROGRESS')
             ));
     }
 
@@ -92,7 +91,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
             $this->transfer->conn->removeAllListeners('data');
-            $this->emit('established', [$this->clientSession, $parser->getLastAck(), $parser->getLastMerging()]);
+            $this->emit('established', [$this->clientSession, $parser->getLastProgress()]);
         });
 
         // On Error
@@ -110,12 +109,11 @@ class Handshake extends EventEmitter implements HandshakeInterface
         $this->transfer->conn->write(
             $parser->doEstablished(
                 $session->getKey(),
-                $session->get('LAST-ACK'),
-                $session->get('LAST-MERGING')
+                $session->get('LAST-PROGRESS')
             )
         );
         $this->transfer->conn->removeAllListeners('data');
-        $this->emit('established', [$session, $parser->getLastAck(), $parser->getLastMerging()]);
+        $this->emit('established', [$session, $parser->getLastProgress()]);
     }
 
     private function sessionStart(ParserInterface $parser, $serverSessionKey = null)

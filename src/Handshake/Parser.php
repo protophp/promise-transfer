@@ -12,8 +12,7 @@ class Parser implements ParserInterface
     private $onError;
 
     private $action;
-    private $lastAck;
-    private $lastMerging;
+    private $lastProgress;
     private $serverSessionKey;
 
     public function __construct(PackInterface $pack = null)
@@ -21,8 +20,7 @@ class Parser implements ParserInterface
         if ($pack) {
             $this->action = $pack->getHeaderByKey(0);
             $this->serverSessionKey = $pack->getHeaderByKey(1);
-            $this->lastAck = $pack->getHeaderByKey(2);
-            $this->lastMerging = $pack->getHeaderByKey(3);
+            $this->lastProgress = $pack->getHeaderByKey(2);
         }
     }
 
@@ -75,24 +73,19 @@ class Parser implements ParserInterface
         return $this->serverSessionKey;
     }
 
-    public function getLastAck()
+    public function getLastProgress()
     {
-        return $this->lastAck;
+        return $this->lastProgress;
     }
 
-    public function getLastMerging()
+    public function doRequest(string $serverSessionKey = null, array $lastProgress = null): string
     {
-        return $this->lastMerging;
+        return (new Pack())->setHeader([self::REQUEST, $serverSessionKey, $lastProgress])->toString();
     }
 
-    public function doRequest(string $serverSessionKey = null, array $lastAck = null, array $lastMerging = null): string
+    public function doEstablished($serverSessionKey, $lastProgress): string
     {
-        return (new Pack())->setHeader([self::REQUEST, $serverSessionKey, $lastAck, $lastMerging])->toString();
-    }
-
-    public function doEstablished($serverSessionKey, $lastAck, $lastMerging): string
-    {
-        return (new Pack)->setHeader([self::ESTABLISHED, $serverSessionKey, $lastAck, $lastMerging])->toString();
+        return (new Pack)->setHeader([self::ESTABLISHED, $serverSessionKey, $lastProgress])->toString();
     }
 
     public function doError(int $code): string

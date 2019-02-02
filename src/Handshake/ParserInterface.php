@@ -26,13 +26,11 @@ interface ParserInterface
 
     public function getServerSessionKey();
 
-    public function getLastAck();
+    public function getLastProgress();
 
-    public function getLastMerging();
+    public function doRequest(string $serverSessionKey = null, array $lastProgress = null): string;
 
-    public function doRequest(string $serverSessionKey = null, array $lastAck = null, array $lastMerging = null): string;
-
-    public function doEstablished($serverSessionKey, $lastAck, $lastMerging): string;
+    public function doEstablished($serverSessionKey, $lastProgress): string;
 
     public function doError(int $code): string;
 }
