@@ -106,4 +106,150 @@ class TransferTest extends TestCase
 
         $this->assertEquals(4, $this->getCount());
     }
+
+    public function testResume_packNotReachedToMerging()
+    {
+        // Create new connection
+        $sConn = new ConnectionStub();
+        $cConn = new ConnectionStub();
+        $cConn->connect($sConn);
+
+        $sConn->setLogger(new Logger('ServerConn', [new ErrorLogHandler()]));
+        $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
+
+        // Setup the transfer
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
+
+        $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
+        $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
+
+        // Init the transfer
+        $sTransfer->init();
+        $cTransfer->init($this->clientSession);
+
+        $cTransfer->on('established', function (PromiseTransferInterface $transfer) use (&$cConn, &$sConn) {
+            $transfer->send((new Pack())->setData('FOO-BAR'), null, function () {
+                $this->assertEquals(1, $this->getCount());
+            });
+
+            $cConn->flush(5);   // Flush 5 bytes
+
+            /////////////////
+            /// Reconnect ///
+            /////////////////
+
+            $sConn = new ConnectionStub();
+            $cConn = new ConnectionStub();
+            $cConn->connect($sConn);
+
+            $sConn->setLogger(new Logger('ServerConn', [new ErrorLogHandler()]));
+            $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
+
+            // Setup the transfer
+            $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+            $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
+
+            $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
+            $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
+
+            // Init the transfer
+            $sTransfer->init();
+            $cTransfer->init($this->clientSession);
+
+            $sTransfer->on('established', function (PromiseTransferInterface $transfer) use ($sConn) {
+                $transfer->on('data', function (PackInterface $pack) use (&$sConn) {
+                    $this->assertSame('FOO-BAR', $pack->getData());
+                    $sConn->flush();
+                });
+            });
+
+            // Flush for handshake
+            $cConn->flush();
+            $sConn->flush();
+
+            // Flush for queue and ack
+            $cConn->flush();
+            $sConn->flush();
+
+        });
+
+        $cConn->flush();
+        $sConn->flush();
+
+        $this->assertEquals(2, $this->getCount());
+    }
+
+    public function testResume_packReachedToMerging()
+    {
+        // Create new connection
+        $sConn = new ConnectionStub();
+        $cConn = new ConnectionStub();
+        $cConn->connect($sConn);
+
+        $sConn->setLogger(new Logger('ServerConn', [new ErrorLogHandler()]));
+        $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
+
+        // Setup the transfer
+        $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+        $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
+
+        $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
+        $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
+
+        // Init the transfer
+        $sTransfer->init();
+        $cTransfer->init($this->clientSession);
+
+        $cTransfer->on('established', function (PromiseTransferInterface $transfer) use (&$cConn, &$sConn) {
+            $transfer->send((new Pack())->setData('FOO-BAR'), null, function () {
+                $this->assertEquals(1, $this->getCount());
+            });
+
+            $cConn->flush(8);   // Flush 8 bytes
+
+            /////////////////
+            /// Reconnect ///
+            /////////////////
+
+            $sConn = new ConnectionStub();
+            $cConn = new ConnectionStub();
+            $cConn->connect($sConn);
+
+            $sConn->setLogger(new Logger('ServerConn', [new ErrorLogHandler()]));
+            $cConn->setLogger(new Logger('ClientConn', [new ErrorLogHandler()]));
+
+            // Setup the transfer
+            $sTransfer = new PromiseTransfer($sConn, $this->sessionManager);
+            $cTransfer = new PromiseTransfer($cConn, $this->sessionManager);
+
+            $sTransfer->setLogger(new Logger('ServerTransfer', [new ErrorLogHandler()]));
+            $cTransfer->setLogger(new Logger('ClientTransfer', [new ErrorLogHandler()]));
+
+            // Init the transfer
+            $sTransfer->init();
+            $cTransfer->init($this->clientSession);
+
+            $sTransfer->on('established', function (PromiseTransferInterface $transfer) use ($sConn) {
+                $transfer->on('data', function (PackInterface $pack) use (&$sConn) {
+                    $this->assertSame('FOO-BAR', $pack->getData());
+                    $sConn->flush();
+                });
+            });
+
+            // Flush for handshake
+            $cConn->flush();
+            $sConn->flush();
+
+            // Flush for queue and ack
+            $cConn->flush();
+            $sConn->flush();
+
+        });
+
+        $cConn->flush();
+        $sConn->flush();
+
+        $this->assertEquals(2, $this->getCount());
+    }
 }
