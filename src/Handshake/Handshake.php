@@ -5,6 +5,7 @@ namespace Proto\PromiseTransfer\Handshake;
 use Evenement\EventEmitter;
 use Proto\Pack\PackInterface;
 use Proto\Pack\Unpack;
+use Proto\PromiseTransfer\Exception\ParserException;
 use Proto\Session\Exception\SessionException;
 use Proto\Session\SessionInterface;
 use Proto\PromiseTransfer\PromiseTransfer;
@@ -53,7 +54,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
             isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The recovery request sent. SessionKey: ' . $serverSessionKey);
             $this->transfer->conn->write((new Parser())->doRequest(
                 $serverSessionKey,
-                $clientSession->get('IN-PROGRESS')
+                $this->inProgress($clientSession)
             ));
         }
     }
@@ -119,16 +120,48 @@ class Handshake extends EventEmitter implements HandshakeInterface
 
     private function established(ParserInterface $parser, SessionInterface $session)
     {
-        isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The establishing message is sent to client. SessionKey: '.$session->getKey());
+        isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The establishing message is sent to client. SessionKey: ' . $session->getKey());
         $this->transfer->conn->write(
             $parser->doEstablished(
                 $session->getKey(),
-                $session->get('IN-PROGRESS')
+                $this->inProgress($session)
             )
         );
         $this->transfer->conn->removeAllListeners('data');
         $this->emit('established', [$session, $parser->getInProgress()]);
         isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
+    }
+
+    private function inProgress(SessionInterface $session)
+    {
+        if (!$session->is('IN-PROGRESS'))
+            return [null, null, 0];
+
+        $inProgress = $session->get('IN-PROGRESS');
+
+        if ($inProgress instanceof PackInterface) {
+
+            try {
+                $parser = new \Proto\PromiseTransfer\Parser($inProgress);
+            } catch (ParserException $e) {
+                isset($this->logger) && $this->logger->error('[PromiseTransfer/Handshake] Unable to parse IN-PROGRESS session!');
+                $session->set('IN-PROGRESS', null);
+                return [null, null, 0];
+            }
+
+            if ($inProgress->isMerged())
+                return [$parser->getId(), $parser->getSeq(), $inProgress->getMergingProgress()];
+
+            return [$parser->getId(), $parser->getSeq(), true];
+
+        } else if (is_array($inProgress)) {
+            return $inProgress;
+
+        } else {
+            isset($this->logger) && $this->logger->error('[PromiseTransfer/Handshake] Invalid IN-PROGRESS session!');
+            $session->set('IN-PROGRESS', null);
+            return [null, null, 0];
+        }
     }
 
     private function sessionStart(ParserInterface $parser, $serverSessionKey = null)
