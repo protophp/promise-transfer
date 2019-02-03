@@ -21,6 +21,12 @@ class Parser implements ParserInterface
             $this->action = $pack->getHeaderByKey(0);
             $this->serverSessionKey = $pack->getHeaderByKey(1);
             $this->inProgress = $pack->getHeaderByKey(2);
+
+            $this->inProgress = [
+                isset($this->inProgress[0]) ? (int)$this->inProgress[0] : null,
+                isset($this->inProgress[1]) ? (int)$this->inProgress[1] : null,
+                isset($this->inProgress[2]) ? ($this->inProgress[2] === true ? true : (int)$this->inProgress[2]) : 0,
+            ];
         }
     }
 
