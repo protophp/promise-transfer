@@ -11,4 +11,6 @@ interface QueueInterface
     public function ack(int $id);
 
     public function response(int $id, PackInterface $pack);
+
+    public function correction(array $inProgress);
 }

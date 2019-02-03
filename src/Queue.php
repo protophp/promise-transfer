@@ -40,6 +40,63 @@ class Queue implements QueueInterface
         unset($this->queue[$id]);
     }
 
+    public function correction(array $inProgress)
+    {
+        list($id, $seq, $progress) = $inProgress;
+
+        if ($id === null)
+            return '';
+
+        // Examples:
+        // ID=20 for "!isset($this->seq[$id])"
+        // ID=1 & SEQ=0 for "$this->seq[$id] !== $seq"
+        // ---------------------
+        // ID | SEQ | Delivered
+        // 1  | 0   | 1     <= This pack has delivered already
+        // 5  | 0   | 0
+        // 7  | 0   | 0
+        // 1  | 1   | 0     <= New pack is sent by ID = 1 and it has not yet delivered
+        // ---------------------
+        if (!isset($this->seq[$id]) || $this->seq[$id] !== $seq)
+            return '';     // Nothing to do...
+
+        // Example:
+        // ID=1 & SEQ=0
+        // ---------------------
+        // ID | SEQ | Delivered
+        // 1  | 0   | 1     <= This pack has delivered already
+        // 5  | 0   | 0
+        // 7  | 0   | 0
+        // ---------------------
+        if (isset($this->seq[$id]) && !isset($this->queue[$id]))
+            return '';     // Nothing to do...
+
+        $buffer = '';
+        $progressReached = false;
+        while (($queueId = key($this->queue)) !== null) {
+
+            if ($progressReached === false && $queueId === $id) {
+                if ($progress === true)
+                    $this->ack($queueId);
+                else
+                    $buffer .= substr($this->queue[$queueId][0]->toString(), $progress);
+
+                $progressReached = true;
+            }
+
+            // Ack pack
+            if ($progressReached === false)
+                $this->ack($queueId);
+            else
+                $buffer .= $this->queue[$queueId][0]->toString();
+
+            next($this->queue);
+        }
+
+        reset($this->queue);
+        return $buffer;
+    }
+
     private function getIdleId()
     {
         $id = array_search(null, $this->queue);
