@@ -47,8 +47,10 @@ class Parser implements ParserInterface
 
     public function parse()
     {
-        if (!isset($this->action))
+        if (!isset($this->action)) {
+            call_user_func($this->onError);
             return;
+        }
 
         switch ($this->action) {
             case self::REQUEST:
@@ -65,7 +67,7 @@ class Parser implements ParserInterface
                 break;
 
             default:
-                return;
+                call_user_func($this->onError);
         }
     }
 
