@@ -52,18 +52,21 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
     public function init(SessionInterface $clientSession = null)
     {
         $handshake = new Handshake($this);
-        if ($clientSession !== null) {
-            $handshake->handshake($clientSession);
-            isset($this->logger) && $this->logger->debug('[Transfer]: The handshake request is sent.');
-        }
 
-        $handshake->on('established', function (SessionInterface $session) {
+        // Set logger to handshake
+        if (isset($this->logger))
+            $handshake->setLogger($this->logger);
+
+        if ($clientSession !== null)
+            $handshake->handshake($clientSession);
+
+        $handshake->on('established', function (SessionInterface $session, array $inProgress) {
             $this->session = $session;
 
-            $this->initQueue();
+            $this->initQueue($inProgress);
             $this->initUnpack();
 
-            isset($this->logger) && $this->logger->debug('[Transfer]: The transfer established successfully.');
+            isset($this->logger) && $this->logger->debug('[PromiseTransfer] The transfer established successfully.');
             $this->emit('established', [$this, $session]);
         });
     }
@@ -74,14 +77,14 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         $this->conn->write(
             Parser::setDataHeader($pack, $id, $seq, is_callable($onResponse) ? true : false)->toString()
         );
-        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.0 is sent.");
+        isset($this->logger) && $this->logger->debug("[PromiseTransfer] The Pack#$id.$seq.0 is sent.");
     }
 
     public function response(PackInterface $pack, int $targetPackId, callable $onAck = null)
     {
         list($id, $seq) = $this->queue->add($pack, null, $onAck);
         $this->conn->write(Parser::setResponseHeader($pack, $id, $seq, $targetPackId)->toString());
-        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#$id.$seq.$targetPackId is sent.");
+        isset($this->logger) && $this->logger->debug("[PromiseTransfer] The Pack#$id.$seq.$targetPackId is sent.");
     }
 
     /**
@@ -94,27 +97,27 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         try {
             $parser = new Parser($pack);
         } catch (ParserException $e) {
-            isset($this->logger) && $this->logger->critical("[Parser]: " . $e->getMsg());
+            isset($this->logger) && $this->logger->critical("[PromiseTransfer/Parser] " . $e->getMsg());
             throw new TransferException(TransferException::PARSING_ERROR);
         }
 
         // Is incoming ACK?
         if ($parser->isAck()) {
-            isset($this->logger) && $this->logger->debug("[Transfer]: The ACK#{$parser->getId()} is received.");
+            isset($this->logger) && $this->logger->debug("[PromiseTransfer] The ACK#{$parser->getId()} is received.");
             $this->queue->ack($parser->getId());
             return;
         }
 
-        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#{$parser->getId()}.{$parser->getSeq()} is received.");
+        isset($this->logger) && $this->logger->debug("[PromiseTransfer] The Pack#{$parser->getId()}.{$parser->getSeq()} is received.");
 
         // Send ACK
-        isset($this->logger) && $this->logger->debug("[Transfer]: The ACK#{$parser->getId()} is sent.");
-        $this->session->set('LAST-ACK', [$parser->getId(), $parser->getSeq()]);
+        isset($this->logger) && $this->logger->debug("[PromiseTransfer] The ACK#{$parser->getId()} is sent.");
+        $this->session->set('IN-PROGRESS', [$parser->getId(), $parser->getSeq(), true]);
         $this->conn->write($parser->setAckHeader()->toString());
 
         // Is response?
         if ($parser->isResponse()) {
-            isset($this->logger) && $this->logger->debug("[Transfer]: The Response#{$parser->getResponseId()} is received.");
+            isset($this->logger) && $this->logger->debug("[PromiseTransfer] The Response#{$parser->getResponseId()} is received.");
             $this->queue->response($parser->getResponseId(), $pack);
             return;
         }
@@ -133,7 +136,7 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         try {
             $parser = new Parser($pack);
         } catch (ParserException $e) {
-            isset($this->logger) && $this->logger->critical("[Parser]: " . $e->getMsg());
+            isset($this->logger) && $this->logger->critical("[PromiseTransfer/Parser] " . $e->getMsg());
             throw new TransferException(TransferException::PARSING_ERROR);
         }
 
@@ -141,19 +144,26 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         if ($parser->isAck())
             return;
 
-        isset($this->logger) && $this->logger->debug("[Transfer]: The Pack#{$parser->getId()}.{$parser->getSeq()} is added to merging.");
-        $this->session->set('LAST-MERGING', [$parser->getId(), $parser->getSeq()]);
+        isset($this->logger) && $this->logger->debug("[PromiseTransfer] The Pack#{$parser->getId()}.{$parser->getSeq()} is added to progressing.");
+        $this->session->set('IN-PROGRESS', $pack);
     }
 
     /**
      * Initial queue
+     * @param array $inProgress [ID, Seq, Progress]
      */
-    private function initQueue()
+    private function initQueue(array $inProgress)
     {
         if (!$this->session->is('TRANSFER-QUEUE'))
             $this->session->set('TRANSFER-QUEUE', new Queue());
 
         $this->queue = $this->session->get('TRANSFER-QUEUE');
+
+        // Correction queue
+        $buffer = $this->queue->correction($inProgress);
+
+        if ($buffer)
+            $this->conn->write($buffer);
     }
 
     /**
@@ -167,6 +177,13 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         $this->unpack = $this->session->get('UNPACK');
         $this->unpack->removeAllListeners('unpack');
         $this->unpack->removeAllListeners('unpack-header');
+
+        // The merging buffer should be cleared if it isn't reached to pack's header.
+        if ($this->session->is('IN-PROGRESS')) {
+            if (!$this->session->get('IN-PROGRESS') instanceof PackInterface)
+                $this->unpack->clear();
+        } else
+            $this->unpack->clear();
 
         $this->unpack->on('unpack', [$this, 'income']);
         $this->unpack->on('unpack-header', [$this, 'merging']);
