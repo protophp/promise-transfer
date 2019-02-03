@@ -12,7 +12,7 @@ class Parser implements ParserInterface
     private $onError;
 
     private $action;
-    private $lastProgress;
+    private $inProgress;
     private $serverSessionKey;
 
     public function __construct(PackInterface $pack = null)
@@ -20,7 +20,7 @@ class Parser implements ParserInterface
         if ($pack) {
             $this->action = $pack->getHeaderByKey(0);
             $this->serverSessionKey = $pack->getHeaderByKey(1);
-            $this->lastProgress = $pack->getHeaderByKey(2);
+            $this->inProgress = $pack->getHeaderByKey(2);
         }
     }
 
@@ -73,9 +73,9 @@ class Parser implements ParserInterface
         return $this->serverSessionKey;
     }
 
-    public function getLastProgress()
+    public function getInProgress()
     {
-        return $this->lastProgress;
+        return $this->inProgress;
     }
 
     public function doRequest(string $serverSessionKey = null, array $lastProgress = null): string

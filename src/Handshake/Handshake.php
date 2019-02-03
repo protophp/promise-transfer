@@ -53,7 +53,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
             isset($this->logger) && $this->logger->debug('[PromiseTransfer/Handshake] The recovery request sent. SessionKey: ' . $serverSessionKey);
             $this->transfer->conn->write((new Parser())->doRequest(
                 $serverSessionKey,
-                $clientSession->get('LAST-PROGRESS')
+                $clientSession->get('IN-PROGRESS')
             ));
         }
     }
@@ -103,7 +103,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
             $this->transfer->conn->removeAllListeners('data');
-            $this->emit('established', [$this->clientSession, $parser->getLastProgress()]);
+            $this->emit('established', [$this->clientSession, $parser->getInProgress()]);
             isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
         });
 
@@ -123,11 +123,11 @@ class Handshake extends EventEmitter implements HandshakeInterface
         $this->transfer->conn->write(
             $parser->doEstablished(
                 $session->getKey(),
-                $session->get('LAST-PROGRESS')
+                $session->get('IN-PROGRESS')
             )
         );
         $this->transfer->conn->removeAllListeners('data');
-        $this->emit('established', [$session, $parser->getLastProgress()]);
+        $this->emit('established', [$session, $parser->getInProgress()]);
         isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
     }
 

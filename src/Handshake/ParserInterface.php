@@ -26,7 +26,7 @@ interface ParserInterface
 
     public function getServerSessionKey();
 
-    public function getLastProgress();
+    public function getInProgress();
 
     public function doRequest(string $serverSessionKey = null, array $lastProgress = null): string;
 
