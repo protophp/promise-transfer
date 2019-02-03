@@ -44,8 +44,11 @@ class Queue implements QueueInterface
     {
         list($id, $seq, $progress) = $inProgress;
 
+        $buffer = '';
+        $progressReached = false;
+
         if ($id === null)
-            return '';
+            $progressReached = true;    // Nothing to do...
 
         // Examples:
         // ID=20 for "!isset($this->seq[$id])"
@@ -57,8 +60,8 @@ class Queue implements QueueInterface
         // 7  | 0   | 0
         // 1  | 1   | 0     <= New pack is sent by ID = 1 and it has not yet delivered
         // ---------------------
-        if (!isset($this->seq[$id]) || $this->seq[$id] !== $seq)
-            return '';     // Nothing to do...
+        else if (!isset($this->seq[$id]) || $this->seq[$id] !== $seq)
+            $progressReached = true;     // Nothing to do...
 
         // Example:
         // ID=1 & SEQ=0
@@ -68,24 +71,25 @@ class Queue implements QueueInterface
         // 5  | 0   | 0
         // 7  | 0   | 0
         // ---------------------
-        if (isset($this->seq[$id]) && !isset($this->queue[$id]))
-            return '';     // Nothing to do...
+        else if (isset($this->seq[$id]) && !isset($this->queue[$id]))
+            $progressReached = true;     // Nothing to do...
 
-        $buffer = '';
-        $progressReached = false;
+        // Prepare packs for write to socket
         while (($queueId = key($this->queue)) !== null) {
 
-            if ($progressReached === false && $queueId === $id) {
+            if (!$progressReached && $queueId === $id) {
                 if ($progress === true)
                     $this->ack($queueId);
                 else
                     $buffer .= substr($this->queue[$queueId][0]->toString(), $progress);
 
                 $progressReached = true;
+                next($this->queue);
+                continue;
             }
 
             // Ack pack
-            if ($progressReached === false)
+            if (!$progressReached)
                 $this->ack($queueId);
             else
                 $buffer .= $this->queue[$queueId][0]->toString();

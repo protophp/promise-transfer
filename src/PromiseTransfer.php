@@ -66,7 +66,7 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
             $this->initQueue($inProgress);
             $this->initUnpack();
 
-            isset($this->logger) && $this->logger->debug('[PromiseTransfer] The transfer established successfully.');
+            isset($this->logger) && $this->logger->debug('[PromiseTransfer] The PromiseTransfer established successfully.');
             $this->emit('established', [$this, $session]);
         });
     }

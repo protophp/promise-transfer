@@ -104,8 +104,8 @@ class Handshake extends EventEmitter implements HandshakeInterface
                 $this->clientSession->set('SERVER-SESSION-KEY', $parser->getServerSessionKey());
 
             $this->transfer->conn->removeAllListeners('data');
-            $this->emit('established', [$this->clientSession, $parser->getInProgress()]);
             isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
+            $this->emit('established', [$this->clientSession, $parser->getInProgress()]);
         });
 
         // On Error
@@ -128,8 +128,8 @@ class Handshake extends EventEmitter implements HandshakeInterface
             )
         );
         $this->transfer->conn->removeAllListeners('data');
-        $this->emit('established', [$session, $parser->getInProgress()]);
         isset($this->logger) && $this->logger->info('[PromiseTransfer/Handshake] The session established.');
+        $this->emit('established', [$session, $parser->getInProgress()]);
     }
 
     private function inProgress(SessionInterface $session)
@@ -149,7 +149,7 @@ class Handshake extends EventEmitter implements HandshakeInterface
                 return [null, null, 0];
             }
 
-            if ($inProgress->isMerged())
+            if (!$inProgress->isMerged())
                 return [$parser->getId(), $parser->getSeq(), $inProgress->getMergingProgress()];
 
             return [$parser->getId(), $parser->getSeq(), true];
