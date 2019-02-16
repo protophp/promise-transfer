@@ -13,6 +13,7 @@ use Proto\PromiseTransfer\Exception\TransferException;
 use Proto\PromiseTransfer\Handshake\Handshake;
 use Psr\Log\LoggerAwareTrait;
 use React\Socket\ConnectionInterface;
+use React\Stream\Util;
 
 class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
 {
@@ -47,6 +48,8 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
     {
         $this->conn = $conn;
         $this->sessionManager = $sessionManager;
+
+        Util::forwardEvents($this->conn, $this, ['close']);
     }
 
     public function init(SessionInterface $clientSession = null)
