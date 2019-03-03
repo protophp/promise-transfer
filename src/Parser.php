@@ -20,7 +20,7 @@ class Parser implements ParserInterface
 
     function __construct(PackInterface $pack)
     {
-        $info = $pack->getHeaderByKey(0);
+        $info = $pack->getHeaderByKey(TRANSFER_RESERVED_KEY);
         if (!isset($info[0]))
             throw new ParserException(ParserException::TYPE_NOT_FOUND);
 
@@ -90,19 +90,19 @@ class Parser implements ParserInterface
     public function setAckHeader(): PackInterface
     {
         $pack = clone $this->pack;
-        return $pack->setHeaderByKey(0, [self::TYPE_ACK, $this->getId(), $this->getSeq()]);
+        return $pack->setHeaderByKey(TRANSFER_RESERVED_KEY, [self::TYPE_ACK, $this->getId(), $this->getSeq()]);
     }
 
     public static function setDataHeader(PackInterface $pack, int $id, int $seq, bool $isWaitForResponse = false): PackInterface
     {
         if ($isWaitForResponse)
-            return $pack->setHeaderByKey(0, [self::TYPE_DATA, $id, $seq, true]);
+            return $pack->setHeaderByKey(TRANSFER_RESERVED_KEY, [self::TYPE_DATA, $id, $seq, true]);
         else
-            return $pack->setHeaderByKey(0, [self::TYPE_DATA, $id, $seq]);
+            return $pack->setHeaderByKey(TRANSFER_RESERVED_KEY, [self::TYPE_DATA, $id, $seq]);
     }
 
     public static function setResponseHeader(PackInterface $pack, int $id, int $seq, int $responseId): PackInterface
     {
-        return $pack->setHeaderByKey(0, [self::TYPE_RESPONSE, $id, $seq, $responseId]);
+        return $pack->setHeaderByKey(TRANSFER_RESERVED_KEY, [self::TYPE_RESPONSE, $id, $seq, $responseId]);
     }
 }

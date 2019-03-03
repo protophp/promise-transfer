@@ -5,6 +5,8 @@ namespace Proto\PromiseTransfer;
 use Proto\Pack\PackInterface;
 use Proto\PromiseTransfer\Exception\ParserException;
 
+define('TRANSFER_RESERVED_KEY', pack('C', 255));
+
 interface ParserInterface
 {
     const TYPE_ACK = 0;
