@@ -15,4 +15,6 @@ interface PromiseTransferInterface extends LoggerAwareInterface, EventEmitterInt
     public function send(PackInterface $pack, callable $onResponse = null, callable $onAck = null);
 
     public function response(PackInterface $pack, int $targetPackId, callable $onAck = null);
+
+    public function getConn(): ConnectionInterface;
 }

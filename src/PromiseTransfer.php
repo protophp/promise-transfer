@@ -90,6 +90,11 @@ class PromiseTransfer extends EventEmitter implements PromiseTransferInterface
         isset($this->logger) && $this->logger->debug("[PromiseTransfer] The Pack#$id.$seq.$targetPackId is sent.");
     }
 
+    public function getConn(): ConnectionInterface
+    {
+        return $this->conn;
+    }
+
     /**
      * Process completed packs
      * @param PackInterface $pack
